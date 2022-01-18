@@ -1,25 +1,21 @@
 
 import type { DefaultDegreeOptions } from '$lib/types/degreeOptions';
 import type { EndpointOutput } from '@sveltejs/kit';
-import * as fs  from 'fs';
-import * as JSONC from 'jsonc-parser';
 
-const degreePaths = './degreeDefaults';
+import { DegreeDefaults } from '$lib/db';
 
-export function get(): EndpointOutput {
+export async function get(): Promise<EndpointOutput> {
     try {
-        const fileList = fs.readdirSync(`${degreePaths}/`);
+        const allDegreeDefaults = await DegreeDefaults.find({});
+        console.log(allDegreeDefaults);
 
         const options: Array<DefaultDegreeOptions> = [];
 
-        for (const fileName of fileList) {
-            const content = fs.readFileSync(`${degreePaths}/${fileName}`);
-            const json = JSONC.parse(content.toString()); 
-
+        for (const degreeDefault of allDegreeDefaults) {
             options.push({
-                degree: json['degree'],
-                lang: json['lang'],
-                id: fileName.replace('.jsonc', '')
+                degree: degreeDefault.degree,
+                lang: degreeDefault.lang,
+                id: degreeDefault._id
             });
         }
 

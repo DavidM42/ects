@@ -1,28 +1,26 @@
 
 import type { EndpointOutput, Request } from '@sveltejs/kit';
-import * as fs  from 'fs';
-import * as JSONC from 'jsonc-parser';
 
-const coursePaths = './degreeDefaults';
+import { DegreeDefaults } from '$lib/db';
 
 export async function get({params}: Request): Promise<EndpointOutput> {
     try {
-        // TODO sanitize input here to not read files outside of the courseDefaults folder
-        // safe path construction helper in nodejs?
-        const path = `${coursePaths}/${params.degreeKey}.jsonc`;
+        const degreeDefault = await DegreeDefaults.findById(params.degreeKey);
 
-        const fileContent = fs.readFileSync(path);
-        const json = JSONC.parse(fileContent.toString()); 
-
-        return {
-            body: JSON.stringify(json),
-        };
-
-    } catch(e) {
-        console.error(e);
+        if (degreeDefault) {
+            return {
+                body: JSON.stringify(degreeDefault),
+            };
+        }
         return {
             body: "not found",
             status: 404
+        };
+    } catch(e) {
+        console.error(e);
+        return {
+            body: "database lookup failed",
+            status: 500
         };
     }
 

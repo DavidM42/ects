@@ -134,6 +134,7 @@
 
 	onMount(async () => {
 		if (browser) {
+			// thx for import tip to https://github.com/sveltejs/kit/issues/905#issuecomment-816389084
 			const plsRotate = (await import('pleaserotate.js')).default;
 			// remind user to rotate to landscape on mobile because useless otherwise
 			const options = {
