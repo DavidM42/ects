@@ -7,7 +7,6 @@ import { DegreeDefaults } from '$lib/db';
 export async function get(): Promise<EndpointOutput> {
     try {
         const allDegreeDefaults = await DegreeDefaults.find({});
-        console.log(allDegreeDefaults);
 
         const options: Array<DefaultDegreeOptions> = [];
 

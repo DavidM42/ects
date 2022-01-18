@@ -33,7 +33,7 @@
 	import type { Degree } from '$lib/types/degree';
 
 	export let saveData: Degree;
-	console.log(saveData);
+	// console.log(saveData);
 
 	let changedSinceLastSaveTime = false;
 	let saving = false;
