@@ -270,7 +270,7 @@
 		justify-content: flex-start;
 
 		// inverted theme from rest to contrast
-		color: var(--cds-ui-background, #ffffff);
+		color: var(--lt-color-text-default, #161616);
 
 		.module {
 			// needed as anchor for tooltip absolute positioning later
@@ -283,7 +283,7 @@
 			text-align: center;
 
 			// inverted theme from rest to contrast
-			background-color: var(--cds-text-01, #161616);
+			background-color: var(--lt-color-background-default, #fff);
 
 			margin: 5px;
 			border: 5px solid var(--relation-color, --fallback-color);
