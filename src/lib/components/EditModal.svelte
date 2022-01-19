@@ -59,7 +59,7 @@
 
 <!-- use mousedown not click to prevent glitch while selecting and moving outside -->
 <div on:mousedown|self class="modal">
-	<div class="body">
+	<div class="modal-body">
 		<span class="close" on:click={() => dispatch('close')}><CloseFilled20 /></span>
 		<div class="content-wrapper">
 			<Form on:submit={() => dispatch('update', course)}>
@@ -116,9 +116,8 @@
 		z-index: 100;
 	}
 
-	.body {
-		background-color: var(--cds-ui-background, #ffffff);
-		color: var(--cds-text-01, #161616);
+	.modal-body {
+		background-color: var(--cds-ui-background);
 		border-radius: 5px;
 
 		min-width: 500px;
