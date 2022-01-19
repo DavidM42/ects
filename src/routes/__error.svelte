@@ -11,8 +11,6 @@
 </script>
 
 <script lang="ts">
-	import 'carbon-components-svelte/css/white.css';
-
     import { statusCodeTextSubsetLookup } from '$lib/types/statusCodes';
 
     export let errorMsg: string;
