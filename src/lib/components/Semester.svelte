@@ -1,42 +1,122 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { flip } from 'svelte/animate';
+
+	import Reset16 from 'carbon-icons-svelte/lib/Reset16';
+	import Edit16 from 'carbon-icons-svelte/lib/Edit16';
+	import Delete20 from "carbon-icons-svelte/lib/Delete20";
 
 	import { dndzone } from 'svelte-dnd-action';
 
 	// thx https://github.com/isaacHagoel/svelte-dnd-action#overriding-the-item-id-key-name
 	// needed because of mongoDB auto id using _id not id for modules
-	import {overrideItemIdKeyNameBeforeInitialisingDndZones} from "svelte-dnd-action";
-	overrideItemIdKeyNameBeforeInitialisingDndZones("_id");
+	import { overrideItemIdKeyNameBeforeInitialisingDndZones } from 'svelte-dnd-action';
+	overrideItemIdKeyNameBeforeInitialisingDndZones('_id');
 
-	import { flip } from 'svelte/animate';
+	import type { Course } from '$lib/types/degree';
+	import EditModal from './EditModal.svelte';
 	const flipDurationMs = 200;
 
 	export let semesterIndex: number;
 	export let items = [];
 
-	let ectsSum: number;
+	/******* ECTS and grade calculation for semester ********/
+	/** Combined ects of all courses you passed in this semester*/
+	let passedEcts: number;
+	let semesterEctsSum: number;
+	let meanGrade: number;
+	/**
+	 * Calculate ects sum of passed and and all courses and calculate mean grade
+	 */
+	const calcSemesterValues = () => {
+		passedEcts = 0;
+		semesterEctsSum = 0;
 
-	const calcSemesterEcts = () => {
-		ectsSum = 0;
+		let gradedCourseEctsSum = 0;
+		let weightedGradeSum = 0;
+
 		items.forEach((item) => {
-			ectsSum += item.ects;
-		});
-	};
-	calcSemesterEcts();
+			const ects = item.ects;
+			semesterEctsSum += ects;
 
+			const hasGrade = item.state.result?.grade;
+			if (item.state.result?.passed || (hasGrade && item.state.result.grade < 4.0)) {
+				passedEcts += ects;
+			}
+			if (hasGrade) {
+				gradedCourseEctsSum += ects;
+				weightedGradeSum += ects * item.state.result.grade;
+			}
+		});
+		// calculate mean grade this semester
+		const exactMeanGrade = gradedCourseEctsSum ? weightedGradeSum / gradedCourseEctsSum : null;
+		// rounded to 2 decimal places
+		meanGrade = Math.round((exactMeanGrade + Number.EPSILON) * 100) / 100;
+	};
+	calcSemesterValues();
+
+	/**** Resorting stuff handler for dnd lib *****/
 	function handleSort(e) {
 		items = e.detail.items;
-        calcSemesterEcts();
-        dispatch('updated', items);
+		calcSemesterValues();
+		dispatch('updated', items);
 	}
 
-    const dispatch = createEventDispatcher();
+
+	/********* Editing courses stuff *********/
+	let courseToEdit: Course;
+	let editModalShown = false;
+
+	const startCourseEdit = (course) => {
+		courseToEdit = course;
+		editModalShown = true;
+	};
+
+	/** Finish course edit and apply new course over it*/
+	const finishCourseEdit = (ev: CustomEvent<Course>) => {
+		const courseIndex = items.findIndex((item) => item._id === ev.detail._id);
+		items[courseIndex] = ev.detail; 
+		courseToEdit = undefined;
+		editModalShown = false;
+		calcSemesterValues();
+		dispatch('updated', items);
+	}
+
+	/** Reset a courses state like passed or grade */
+	const resetCourseState = (id: string) => {
+		// TODO more robust less analogue reset or just edit if editModal gets changed
+		const courseIndex = items.findIndex((item) => item._id === id);
+		items[courseIndex].state.result = {};
+		delete items[courseIndex].customname;
+		calcSemesterValues();
+		dispatch('updated', items);
+	}
+
+	const dispatch = createEventDispatcher();
 </script>
+
+{#if editModalShown}
+	<EditModal course={courseToEdit} on:click={() => editModalShown = !editModalShown} on:close={() => editModalShown = false} on:update={finishCourseEdit}/>
+{/if}
 
 <div class="semester">
 	<div class="semester-info">
 		<div>Semester <span class="number">{semesterIndex + 1}</span></div>
-		<div><span class="number">{ectsSum}</span> ECTS</div>
+
+		{#if meanGrade}
+			<div>
+				Ø<span class="number">{meanGrade}</span>
+			</div>
+		{/if}
+
+		<div>
+			<span class="number">{passedEcts}</span> /
+			<span class="number">{semesterEctsSum}</span> ECTS
+		</div>
+
+		{#if !items || items.length === 0}
+			<div class="semester-remove" on:click={() => dispatch('semesterDelete')}><Delete20 /></div>
+		{/if}
 	</div>
 	<!-- TODO make clickable to mark as done, failed, todo and so on -->
 	<div
@@ -45,12 +125,44 @@
 		on:consider={handleSort}
 		on:finalize={handleSort}
 	>
+		<!-- TODO abstract module into a seperate component with update function -->
+		<!-- TODO and then rename it all course  -->
 		{#each items as item (item._id)}
-			<div class="module" animate:flip={{ duration: flipDurationMs }} style="border: 5px solid {item.relation?.color || '#ececec'};">
-                <div class="shortname">{item.shortname}</div>
-                <div class="fullname">{item.fullname}</div>
-                <div class="ects">{item.ects}</div>
-                <div class="types">{`(${item.types.join(',')})`}</div>
+			<div
+				class="module"
+				animate:flip={{ duration: flipDurationMs }}
+				style="--relation-color: {item.relation?.color || '#ececec'};"
+				class:feedback--passed={item.state?.result?.passed || (item.state?.result?.grade <= 4.0 && item.state?.result?.grade > 0.0)}
+				class:feedback--failed={item.state?.result?.passed === false || item.state?.result?.grade > 4.0}
+				class:feedback--forecast={item.state?.result?.forecast}
+			>
+				<div class="shortname">{item.shortname}</div>
+
+				<!-- show user given custom name if set else normal fullname -->
+				{#if item.customname}
+					<div class="fullname customname">{item.customname}</div>
+				{:else}
+					<div class="fullname">{item.fullname}</div>
+				{/if}
+
+				<div class="number-results-row">
+					<span class="ects">{item.ects}</span> ects
+					{#if item.state?.result?.grade}
+						/ <span class="grade">{item.state.result.grade}</span>
+					{/if}
+				</div>
+
+				<div class="last-row">
+					<span class="icon" on:click={() => startCourseEdit(item)}><Edit16 /></span>
+
+					<!-- relation between buttons if exists -->
+					{#if item.types && item.types.length > 0}
+						<div class="types">{`(${item.types.join(',')})`}</div>
+					{/if}
+
+					<!-- TODO maybe at some point require confirmation here? but ui complicated -->
+					<span class="icon" on:click={() => resetCourseState(item._id)}><Reset16 /></span>
+				</div>
 			</div>
 		{/each}
 	</div>
@@ -58,7 +170,7 @@
 
 <style lang="scss">
 	@media only screen and (min-width: 1150px) {
-		// desktop 
+		// desktop
 		.semester {
 			flex-direction: row;
 
@@ -66,8 +178,8 @@
 			height: 120px;
 
 			.semester-info {
-				// defined 100px width on desktop
-				width: 100px;
+				// defined 110px width on desktop
+				width: 115px;
 			}
 
 			.module-container {
@@ -79,7 +191,6 @@
 					width: 10vw;
 				}
 			}
-
 		}
 	}
 
@@ -94,6 +205,10 @@
 				// full width row on mobile
 				width: 100%;
 				padding: 5px 0px;
+
+				div {
+					margin: 2px 0px;
+				}
 			}
 
 			.module-container {
@@ -107,14 +222,15 @@
 		}
 	}
 
-
 	.semester {
 		display: flex;
 
 		margin: 1px 0px;
 
+		// if the relation coniditional var is missing
+		--fallback-color: #ececec;
+
 		.semester-info {
-			// positioning of info
 			text-align: center;
 			display: flex;
 			justify-content: space-evenly;
@@ -126,10 +242,14 @@
 
 			margin: 5px 0px;
 
-            .number {
-                font-size: 1.2em;
-                font-weight: 700;
-            }
+			.number {
+				font-size: 1.2em;
+				font-weight: 700;
+			}
+		}
+
+		.semester-remove {
+			cursor: pointer;
 		}
 	}
 
@@ -141,46 +261,89 @@
 		color: #3077c6;
 
 		.module {
-			// positioning of info
 			display: flex;
-			justify-content: center;
+			justify-content: space-between;
 			align-items: center;
 			flex-direction: column;
-            text-align: center;
+			text-align: center;
 
-			// TODO dynamically
-			// background-color: azure;
-			// border: 1px solid red;
+			margin: 5px;
+			background-color: #fff;
+			border: 5px solid var(--relation-color, --fallback-color);
+			border-radius: 5px 0px;
 
-            margin: 5px;
-            border-radius: 5px 0px;
-            background-color: #fff;
+			/******************* Status feedback stuff ********************/
+			&.feedback {
+				&--failed {
+					// TODO find way to only once define color
+					color: #333;
+					background-color: rgba(255, 0, 0, 0.6);
+					// first try out ux of bg-color probs
+					// thx to https://stackoverflow.com/a/24084708
+					// box-shadow: inset 0 0 0 1000px rgba(255,0,0,.45);
+				}
 
-            // space between rows of info
-            div {
-                margin: 3px 0px;
-            }
+				&--passed {
+					color: #333;
+					background-color: rgba(0, 255, 0, 0.6);
+				}
 
-            /* Info types styling */
-            .shortname {
-                font-size: 1.5em;
-            }
+				&--forecast {
+					color: #333;
+					background-color: rgba(208, 116, 245, 0.6);
+				}
+			}
 
-            .fullname {
-                font-size: 0.7em;
-                max-width: 80%;
-                text-overflow: none;
-                max-height: 30%;
-                overflow: hidden;
-            }
+			/******************* Info rows ********************************/
+			// space between rows of info
+			div {
+				margin: 3px 0px;
+			}
 
-            .ects {
-                font-weight: 600;
-            }
+			/* Info types styling */
+			.shortname {
+				font-size: 1.5em;
+			}
 
-            .types {
-                font-size: 0.8em;
-            }
+			.fullname {
+				font-size: 0.7em;
+				max-width: 90%;
+				text-overflow: ellipsis;
+				max-height: 35%;
+				overflow: hidden;
+				padding-bottom: 2px;
+
+				&.customname {
+					font-style: italic;
+					color: #333;
+				}
+			}
+
+			.number-results-row {
+				.ects, .grade {
+					font-weight: 600;
+				}
+			}
+
+			.types {
+				font-size: 0.8em;
+			}
+
+			.last-row {
+				width: 100%;
+				display: flex;
+				flex-direction: row;
+				justify-content: space-between;
+
+				.icon {
+					cursor: pointer;
+					margin: 0px 5px;
+					// border-radius: 50%;
+					border-radius: 5px;
+
+					border: 2px solid var(--relation-color, --fallback-color);
+				}
+			}
 		}
 	}
 </style>

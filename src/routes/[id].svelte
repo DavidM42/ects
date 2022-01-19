@@ -40,22 +40,47 @@
 
 	let openedDeleteModal = false;
 
-	let ectsSum: number;
+	/******* ECTS and grade calculation for whole degree ********/
+	/** Combined ects of all courses you passed in degree*/
+	let passedEcts: number;
+	let degreeEctsSum: number;
+	let meanGrade: number;
+	/**
+	 * Calculate ects sum of passed and and all courses and calculate mean grade
+	 */
+	const calcDegreeValues = () => {
+		passedEcts = 0;
+		degreeEctsSum = 0;
 
-	const calcDegreeEcts = () => {
-		ectsSum = 0;
+		let gradedCourseEctsSum = 0;
+		let weightedGradeSum = 0;
+
 		saveData.curriculum.forEach((semester) => {
-			semester.forEach((course) => {
-				ectsSum += course.ects;
+			semester.forEach((item) => {
+				const ects = item.ects;
+				degreeEctsSum += ects;
+
+				const hasGrade = item.state.result?.grade;
+				if (item.state.result?.passed || (hasGrade && item.state.result.grade < 4.0)) {
+					passedEcts += ects;
+				}
+				if (hasGrade) {
+					gradedCourseEctsSum += ects;
+					weightedGradeSum += ects * item.state.result.grade;
+				}
 			});
 		});
+		// calculate mean grade this semester
+		const exactMeanGrade = gradedCourseEctsSum ? weightedGradeSum / gradedCourseEctsSum : null;
+		// rounded to 2 decimal places
+		meanGrade = Math.round((exactMeanGrade + Number.EPSILON) * 100) / 100;
 	};
-	calcDegreeEcts();
+	calcDegreeValues();
 
 	/**
 	 * Listener to warn users from leaving with non saved changes
 	 */
-	const autoSaveListener = (e) => {
+	const unsavedChangesCloseListener = (e) => {
 		const confirmationMessage =
 			'Es sieht so aus, als hätten Sie etwas bearbeitet. Wenn Sie die Seite vor dem Speichern verlassen, gehen Ihre Änderungen verloren.';
 		(e || window.event).returnValue = confirmationMessage; //Gecko + IE
@@ -69,44 +94,42 @@
 	const onUpdatedSemester = (semesterIndex, newData) => {
 		saveData.curriculum[semesterIndex] = newData;
 		changedSinceLastSaveTime = true;
-		
-		// TODO activate again when finishing and failing and so on is implemented for modules to calc progress 
+		calcDegreeValues();
+
+		// TODO activate again when finishing and failing and so on is implemented for modules to calc progress
 		// calcDegreeEcts();
 
-		window.addEventListener('beforeunload', autoSaveListener);
+		window.addEventListener('beforeunload', unsavedChangesCloseListener);
 	};
 
 	// TODO ui feedback that it is saving and when?
 	/**
 	 * Calls itself once every minute and if any change was recorded saves it to mongodb
 	 */
-	const autoSave = () => {
+	const autoSave = async () => {
 		if (changedSinceLastSaveTime) {
 			saving = true;
 			console.log('Saving');
 
-			fetch(`/sessions/${saveData._id}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(saveData)
-			})
-				.then(async (res) => {
-					if (res.ok) {
-						console.log('Saved');
-					} else {
-						console.error(res);
-					}
-				})
-				.catch((e) => {
-					console.error(e);
-				})
-				.finally(() => {
-					changedSinceLastSaveTime = false;
-					saving = false;
-					window.removeEventListener('beforeunload', autoSaveListener);
+			try {
+				const res = await fetch(`/sessions/${saveData._id}`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(saveData)
 				});
+				if (res.ok) {
+					console.log('Saved');
+				} else {
+					console.error(res);
+				}
+			} catch (e) {
+				console.error(e);
+			}
+			changedSinceLastSaveTime = false;
+			saving = false;
+			window.removeEventListener('beforeunload', unsavedChangesCloseListener);
 		}
 
 		// check for edits and save once a minute
@@ -115,21 +138,38 @@
 	};
 	autoSave();
 
-	const deleteSession = (event: any) => {
-		fetch(`/sessions/${saveData._id}`, {
-			method: 'DELETE'
-		})
-			.then(async (res) => {
-				if (res.ok) {
-					console.log('Deleted');
-					window.location.href = '/';
-				} else {
-					console.error(res);
-				}
-			})
-			.catch((e) => {
-				console.error(e);
+	const deleteSession = async () => {
+		try {
+			const res = await fetch(`/sessions/${saveData._id}`, {
+				method: 'DELETE'
 			});
+			if (res.ok) {
+				console.log('Deleted');
+				// don't warn user of unsaved changes anymore now
+				window.removeEventListener('beforeunload', unsavedChangesCloseListener);
+				window.location.href = '/';
+			} else {
+				console.error(res);
+			}
+		} catch (e) {
+			console.error(e);
+		}
+	};
+
+	/** Adds a new semester, saved and reload page. Reload needed because dnd zones can't be re initialized */
+	const addSemester = async () => {
+		saveData.curriculum.push([]);
+		changedSinceLastSaveTime = true;
+		await autoSave();
+		window.location.reload();
+	};
+
+	/** Removes semester at position i */
+	const removeSemester = async (i: number) => {
+		saveData.curriculum.splice(i, 1);
+		changedSinceLastSaveTime = true;
+		await autoSave();
+		window.location.reload();
 	};
 
 	onMount(async () => {
@@ -138,10 +178,10 @@
 			const plsRotate = (await import('pleaserotate.js')).default;
 			// remind user to rotate to landscape on mobile because useless otherwise
 			const options = {
-				message: "Please Rotate Your Device",
-				subMessage: "Plan is too wide for portrait mode",
+				message: 'Please Rotate Your Device',
+				subMessage: 'Plan is too wide for portrait mode',
 				allowClickBypass: false
-			}
+			};
 			plsRotate.start(options);
 		}
 	});
@@ -149,8 +189,21 @@
 	// setTimeout(() => console.log(saveData), 10000);
 </script>
 
-<h1>{ import.meta.env.VITE_APP_DOMAIN }</h1>
-<h3>{saveData.degree} - <span class="number">{ectsSum}</span> ects</h3>
+<h1>{import.meta.env.VITE_APP_DOMAIN}</h1>
+<h3>{saveData.degree}</h3>
+<div id="stats-container">
+	<div class="ects">
+		<ProgressBar
+			max={degreeEctsSum}
+			value={passedEcts}
+			labelText="Progress"
+			helperText="{passedEcts} / {degreeEctsSum} ECTS"
+		/>
+	</div>
+	<div class="grade">
+		Ø<span class="number">{meanGrade}</span>
+	</div>
+</div>
 
 <div class="grid">
 	<RelationLegend {saveData} />
@@ -175,6 +228,7 @@
 				semesterIndex={i}
 				items={saveData.curriculum[i]}
 				on:updated={(e) => onUpdatedSemester(i, e.detail)}
+				on:semesterDelete={() => removeSemester(i)}
 			/>
 		{/each}
 	{/if}
@@ -190,12 +244,15 @@
 			{/if}
 		</div>
 		<div id="button-container">
-			<Button kind="danger" on:click={() => (openedDeleteModal = true)}>Delete</Button>
+			<Button size="small" on:click={addSemester}>Add semester</Button>
+			<Button size="small" kind="danger" on:click={() => (openedDeleteModal = true)}
+				>Delete all</Button
+			>
 			<!-- TODO share button? -->
 		</div>
 	</div>
 
-<!-- /div.container -->
+	<!-- /div.container -->
 </div>
 
 <style lang="scss">
@@ -208,6 +265,15 @@
 	h3 {
 		font-size: 1.5rem;
 		margin-bottom: 5px;
+	}
+
+	div#stats-container {
+		font-size: 1.3rem;
+		text-align: center;
+
+		div {
+			margin: 2px 0px;
+		}
 
 		.number {
 			font-size: 1.05em;

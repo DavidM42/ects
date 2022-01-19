@@ -9,17 +9,32 @@ export const sessionSaveSchema = new Schema({
     curriculum: [
         // semester array
         [
-            // module array in every semester{
+            // course array in every semester{
             {
                 fullname: String,
                 shortname: String,
+                // optional
+                customname: String,
                 ects: Number,
                 // optional
                 relation: {
                     name: String,
                     color: String
                 },
-                types: [String]
+                types: [String],
+
+                state: {
+                    options: {
+                        passable: Boolean,
+                        gradeable: Boolean,
+                    },
+                    // optional
+                    result: {
+                        grade: Number,
+                        passed: Boolean,
+                        forecast: Boolean
+                    }
+                }
             }
         ]
     ]
