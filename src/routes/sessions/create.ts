@@ -1,11 +1,11 @@
-import type { EndpointOutput, Request } from '@sveltejs/kit';
+import type { EndpointOutput } from '@sveltejs/kit';
 
 import { SessionSave } from '$lib/db';
 import type { Degree } from '$lib/types/degree';
 
-export async function post(request: Request): Promise<EndpointOutput> {
+export async function post({ params, request }): Promise<EndpointOutput> {
     try {
-        const data: Degree = request.body as unknown as Degree;
+        const data: Degree = (await request.json()) as Degree;
     
 		const res = await new SessionSave({
 			degree: data.degree,
