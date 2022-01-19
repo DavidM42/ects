@@ -117,8 +117,8 @@
 	}
 
 	.body {
-		background-color: var(--lt-color-text-default);
-		color: var(--lt-color-background-default);
+		background-color: var(--cds-ui-background, #ffffff);
+		color: var(--cds-text-01, #161616);
 		border-radius: 5px;
 
 		min-width: 500px;

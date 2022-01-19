@@ -247,7 +247,7 @@
 			flex-direction: column;
 
 			border-radius: 10px;
-			// inverted colors for cards with no borders 
+			// always white text on black bg in light and dark theme
 			background-color: var(--lt-color-text-default);
 			color: var(--lt-color-background-default);
 
@@ -269,7 +269,8 @@
 		flex-direction: row;
 		justify-content: flex-start;
 
-		color: var(--lt-color-text-default);
+		// inverted theme from rest to contrast
+		color: var(--cds-ui-background, #ffffff);
 
 		.module {
 			// needed as anchor for tooltip absolute positioning later
@@ -281,8 +282,10 @@
 			flex-direction: column;
 			text-align: center;
 
+			// inverted theme from rest to contrast
+			background-color: var(--cds-text-01, #161616);
+
 			margin: 5px;
-			background-color: var(--lt-color-background-default);
 			border: 5px solid var(--relation-color, --fallback-color);
 			border-radius: 5px 0px;
 
