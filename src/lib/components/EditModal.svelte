@@ -27,6 +27,21 @@
         window.scrollTo(0, 0);
     });
 
+	function closeModalViaEventDispatch() {
+		dispatch('close');
+	}
+
+	/**
+	 * Close modal on pressing escape key
+	*/
+	function keydownEscapeClose(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			// close modal and focus body to not have focus on some weird element
+			document.body.focus();
+			closeModalViaEventDispatch();
+		}
+	}
+
 	const dispatch = createEventDispatcher();
 </script>
 
@@ -37,9 +52,13 @@
             overflow: hidden;
         }
     </style>
-</svelte:head>	
+</svelte:head>
 
-<div on:click|self class="modal">
+<!-- bind keyboard events to svelte body while modal is open to make sure to catch keyboardEvents no matter the current focus -->
+<svelte:body on:keydown={keydownEscapeClose}></svelte:body>
+
+<!-- use mousedown not click to prevent glitch while selecting and moving outside -->
+<div on:mousedown|self class="modal">
 	<div class="body">
 		<span class="close" on:click={() => dispatch('close')}><CloseFilled20 /></span>
 		<div class="content-wrapper">
@@ -72,7 +91,10 @@
                         />                        
                     {/if}
 				</FormGroup>
-				<Button type="submit">Save</Button>
+				<div id="button-container">
+					<Button type="submit">Save</Button>
+					<Button kind="danger" on:click={() => dispatch('reset', course)}>Reset</Button>
+				</div>
 			</Form>
 		</div>
 	</div>
@@ -109,6 +131,11 @@
 
 		.content-wrapper {
 			margin: 30px;
+
+			div#button-container {
+				display: flex;
+				justify-content: space-between;
+			}
 		}
 	}
 </style>

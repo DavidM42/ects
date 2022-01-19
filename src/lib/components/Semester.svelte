@@ -6,6 +6,8 @@
 	import Edit16 from 'carbon-icons-svelte/lib/Edit16';
 	import Delete20 from "carbon-icons-svelte/lib/Delete20";
 
+	import { Tooltip } from 'carbon-components-svelte';
+
 	import { dndzone } from 'svelte-dnd-action';
 
 	// thx https://github.com/isaacHagoel/svelte-dnd-action#overriding-the-item-id-key-name
@@ -83,11 +85,13 @@
 	}
 
 	/** Reset a courses state like passed or grade */
-	const resetCourseState = (id: string) => {
-		// TODO more robust less analogue reset or just edit if editModal gets changed
-		const courseIndex = items.findIndex((item) => item._id === id);
+	const resetCourseState = (ev: CustomEvent<Course>) => {
+		const courseIndex = items.findIndex((item) => item._id === ev.detail._id);
 		items[courseIndex].state.result = {};
 		delete items[courseIndex].customname;
+
+		courseToEdit = undefined;
+		editModalShown = false;
 		calcSemesterValues();
 		dispatch('updated', items);
 	}
@@ -96,7 +100,7 @@
 </script>
 
 {#if editModalShown}
-	<EditModal course={courseToEdit} on:click={() => editModalShown = !editModalShown} on:close={() => editModalShown = false} on:update={finishCourseEdit}/>
+	<EditModal course={courseToEdit} on:mousedown={() => editModalShown = !editModalShown} on:close={() => editModalShown = false} on:update={finishCourseEdit} on:reset={resetCourseState}/>
 {/if}
 
 <div class="semester">
@@ -127,9 +131,10 @@
 	>
 		<!-- TODO abstract module into a seperate component with update function -->
 		<!-- TODO and then rename it all course  -->
-		{#each items as item (item._id)}
+		{#each items as item, itemIndex (item._id)}
 			<div
 				class="module"
+				on:dblclick={() => startCourseEdit(item)}
 				animate:flip={{ duration: flipDurationMs }}
 				style="--relation-color: {item.relation?.color || '#ececec'};"
 				class:feedback--passed={item.state?.result?.passed || (item.state?.result?.grade <= 4.0 && item.state?.result?.grade > 0.0)}
@@ -152,17 +157,21 @@
 					{/if}
 				</div>
 
-				<div class="last-row">
-					<span class="icon" on:click={() => startCourseEdit(item)}><Edit16 /></span>
+				{#if item.types && item.types.length > 0}
+					<div class="types">{`(${item.types.join(',')})`}</div>
+				{/if}
 
-					<!-- relation between buttons if exists -->
-					{#if item.types && item.types.length > 0}
-						<div class="types">{`(${item.types.join(',')})`}</div>
-					{/if}
+				<!-- on first element in first semester include tooltip how to double tap and use -->
+				{#if semesterIndex === 0 && itemIndex === 0}
+					<div class="help-tooltip">
+						<Tooltip>
+							<p id="tooltip-body">
+								Double click course to edit
+							</p>
+						</Tooltip>
+					</div>	
+				{/if}
 
-					<!-- TODO maybe at some point require confirmation here? but ui complicated -->
-					<span class="icon" on:click={() => resetCourseState(item._id)}><Reset16 /></span>
-				</div>
 			</div>
 		{/each}
 	</div>
@@ -239,6 +248,8 @@
 
 			border-radius: 10px;
 			background-color: #ececec;
+			// background-color: var(--lt-color-text-default);
+			// color: var(--lt-color-background-default);
 
 			margin: 5px 0px;
 
@@ -259,8 +270,12 @@
 		justify-content: flex-start;
 
 		color: #3077c6;
+		// color: var(--lt-color-text-default);
 
 		.module {
+			// needed as anchor for tooltip absolute positioning later
+			position: relative;
+
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
@@ -269,6 +284,7 @@
 
 			margin: 5px;
 			background-color: #fff;
+			// background-color: var(--lt-color-background-default);
 			border: 5px solid var(--relation-color, --fallback-color);
 			border-radius: 5px 0px;
 
@@ -297,7 +313,7 @@
 			/******************* Info rows ********************************/
 			// space between rows of info
 			div {
-				margin: 3px 0px;
+				margin: 2px 0px;
 			}
 
 			/* Info types styling */
@@ -329,20 +345,11 @@
 				font-size: 0.8em;
 			}
 
-			.last-row {
-				width: 100%;
-				display: flex;
-				flex-direction: row;
-				justify-content: space-between;
-
-				.icon {
-					cursor: pointer;
-					margin: 0px 5px;
-					// border-radius: 50%;
-					border-radius: 5px;
-
-					border: 2px solid var(--relation-color, --fallback-color);
-				}
+			.help-tooltip {
+				position: absolute;
+				// -3px to compensate for margin of module-container
+				bottom: -3px;
+				right: 1px;
 			}
 		}
 	}

@@ -25,12 +25,17 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/env';
 
+	// try out dynamics theming in the browser dark and light
+	// import "carbon-components-svelte/css/all.css";
 	import 'carbon-components-svelte/css/white.css';
-	import { Button, Modal, ProgressBar } from 'carbon-components-svelte';
+	// import 'carbon-components-svelte/css/g100.css';
+
+
+	import { Button, CodeSnippet, Modal, ProgressBar } from 'carbon-components-svelte';
 
 	import Semester from '$lib/components/Semester.svelte';
 	import RelationLegend from '$lib/components/RelationLegend.svelte';
-	import type { Degree } from '$lib/types/degree';
+	import type { Course, Degree } from '$lib/types/degree';
 
 	export let saveData: Degree;
 	// console.log(saveData);
@@ -91,7 +96,7 @@
 		return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 	};
 
-	const onUpdatedSemester = (semesterIndex, newData) => {
+	const onUpdatedSemester = (semesterIndex: number, newData: Course[]) => {
 		saveData.curriculum[semesterIndex] = newData;
 		changedSinceLastSaveTime = true;
 		calcDegreeValues();
@@ -172,6 +177,20 @@
 		window.location.reload();
 	};
 
+	/** Custom sharing action for url */
+	const shareUrl = (text) => {
+		if (navigator.share) {
+			// native share on mobile devices in https context
+			navigator.share({
+				url: window.location.href,
+			}).then(r => console.log('share invoked')).catch(e => console.warn(e));
+		}
+		else {
+			// fallback copy to clipboard
+			navigator.clipboard.writeText(window.location.href);
+		}
+	}
+
 	onMount(async () => {
 		if (browser) {
 			// thx for import tip to https://github.com/sveltejs/kit/issues/905#issuecomment-816389084
@@ -208,18 +227,45 @@
 <div class="grid">
 	<RelationLegend {saveData} />
 
-	<!-- Modal to confirm deletion -->
-	<Modal
-		danger
-		bind:open={openedDeleteModal}
-		modalHeading="Delete all"
-		primaryButtonText="Delete"
-		secondaryButtonText="Cancel"
-		on:click:button--secondary={() => (openedDeleteModal = false)}
-		on:submit={deleteSession}
-	>
-		<p>Deleting your personal plan is permanent and cannot be undone.</p>
-	</Modal>
+	<div id="interaction-container">
+		<!-- Modal to confirm deletion -->
+		<Modal
+			danger
+			bind:open={openedDeleteModal}
+			modalHeading="Delete all"
+			primaryButtonText="Delete"
+			secondaryButtonText="Cancel"
+			on:click:button--secondary={() => (openedDeleteModal = false)}
+			on:submit={deleteSession}
+		>
+			<p>Deleting your personal plan is permanent and cannot be undone.</p>
+		</Modal>
+
+		<div id="button-container" class="first-row">
+			<Button size="small" on:click={addSemester}>Add semester</Button>
+			<Button size="small" kind="danger" on:click={() => (openedDeleteModal = true)}
+				>Delete all</Button
+			>
+		</div>
+		<div class="second-row">
+			<div class="url-snippet">
+				{#if browser}
+					<CodeSnippet code={window.location.href} copy={shareUrl}/>
+				{:else}
+					<CodeSnippet skeleton={true}/>
+				{/if}
+			</div>
+			<div id="save-status-container" on:click={() => autoSave()}>
+				{#if saving}
+					<ProgressBar helperText="Saving..." />
+				{:else if changedSinceLastSaveTime}
+					<ProgressBar value={100} helperText="Unsaved changes" />
+				{:else}
+					<ProgressBar value={0} helperText="Changes saved" />
+				{/if}
+			</div>
+		</div>
+	</div>
 
 	{#if saveData?.curriculum}
 		{#each saveData.curriculum as semester, i}
@@ -232,25 +278,6 @@
 			/>
 		{/each}
 	{/if}
-
-	<div id="interaction-container">
-		<div id="save-status-container" on:click={() => autoSave()}>
-			{#if saving}
-				<ProgressBar helperText="Saving..." />
-			{:else if changedSinceLastSaveTime}
-				<ProgressBar value={100} helperText="Unsaved changes" />
-			{:else}
-				<ProgressBar value={0} helperText="Changes saved" />
-			{/if}
-		</div>
-		<div id="button-container">
-			<Button size="small" on:click={addSemester}>Add semester</Button>
-			<Button size="small" kind="danger" on:click={() => (openedDeleteModal = true)}
-				>Delete all</Button
-			>
-			<!-- TODO share button? -->
-		</div>
-	</div>
 
 	<!-- /div.container -->
 </div>
@@ -283,13 +310,24 @@
 
 	div#interaction-container {
 		display: flex;
-		flex-direction: row;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
 		margin-bottom: 10px;
+
+		div {
+			margin: 5px 0px;
+		}
 
 		div#save-status-container {
 			cursor: pointer;
-			flex-grow: 1;
+			flex-grow: 0.5;
 			margin-right: 10px;
+		}
+
+		div.url-snippet {
+				// should fit url and need defined size for skeleton in preload
+				width: 450px;
 		}
 	}
 
