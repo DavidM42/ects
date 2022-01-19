@@ -1,9 +1,9 @@
-import type { EndpointOutput, Request } from '@sveltejs/kit';
+import type { EndpointOutput } from '@sveltejs/kit';
 
 import { SessionSave } from '$lib/db';
 import type { Degree } from '$lib/types/degree';
 
-export async function get({ params }: Request): Promise<EndpointOutput> {
+export async function get({ params }): Promise<EndpointOutput> {
     try {
         const saveData = await SessionSave.findById(params.id);
 
@@ -26,11 +26,11 @@ export async function get({ params }: Request): Promise<EndpointOutput> {
     }
 }
 
-export async function put( request : Request): Promise<EndpointOutput> {
+export async function put({ params, request }): Promise<EndpointOutput> {
     try {
-        const data: Degree = request.body as unknown as Degree;
+        const data: Degree = (await request.json()) as Degree;
 
-        const res = await SessionSave.findByIdAndUpdate(request.params.id, {
+        const res = await SessionSave.findByIdAndUpdate(params.id, {
             degree: data.degree,
 			lang: data.lang,
 			curriculum: data.curriculum,
@@ -44,22 +44,21 @@ export async function put( request : Request): Promise<EndpointOutput> {
         } else {
             return {
                 status: 401,
-                body: `Could not find ${request.params.id} session`
+                body: `Could not find ${params.id} session`
             };
         }
     } catch (e) {
         console.error(e);
         return {
             status: 500,
-            body: `Could not update session ${request.params.id}`
+            body: `Could not update session ${params.id}`
         };
     }
 }
 
-// TODO test this endpoint
-export async function del( request : Request): Promise<EndpointOutput> {
+export async function del({ params }): Promise<EndpointOutput> {
     try {
-        const res = await SessionSave.findByIdAndDelete(request.params.id);
+        const res = await SessionSave.findByIdAndDelete(params.id);
     
         if (res) {
             return {
@@ -68,14 +67,14 @@ export async function del( request : Request): Promise<EndpointOutput> {
         } else {
             return {
                 status: 401,
-                body: `Could not find ${request.params.id} session`
+                body: `Could not find ${params.id} session`
             };
         }
     } catch (e) {
         console.error(e);
         return {
             status: 500,
-            body: `Could not delete session ${request.params.id}`
+            body: `Could not delete session ${params.id}`
         };
     }
 }

@@ -1,9 +1,9 @@
 
-import type { EndpointOutput, Request } from '@sveltejs/kit';
+import type { EndpointOutput } from '@sveltejs/kit';
 
 import { DegreeDefaults } from '$lib/db';
 
-export async function get({params}: Request): Promise<EndpointOutput> {
+export async function get({params}): Promise<EndpointOutput> {
     try {
         const degreeDefault = await DegreeDefaults.findById(params.degreeKey);
 

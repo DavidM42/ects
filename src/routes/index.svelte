@@ -57,7 +57,7 @@
 	 */
 	const updateDefaultData = async (key: string) => {
 		try {
-			const json = await (await fetch(`/degrees/default-${key}.json`)).json();
+			const json = await (await fetch(`/degrees/default-${key}`)).json();
 			defaultData = json;
 		} catch (e) {
 			console.error(e);
@@ -131,16 +131,28 @@
 	{#if browser && SessionRemembering.get().length > 0}
 		<h2>Or continue with</h2>
 		{#each SessionRemembering.get() as session}
-			<ClickableTile href="/{session.id}">
-				<div class="info-row">
-					<span>Session:</span>
-					<span class="seesionid">{session.id}</span>
-				</div>
-				<div class="info-row">
-					<span>Created on:</span>
-					<span class="date">{session.createdAt.toLocaleDateString()} {session.createdAt.toLocaleTimeString()}</span>
-				</div>
-			</ClickableTile>
+			<div class="tile-container">
+				<ClickableTile href="/{session.id}">
+					<div class="info-row">
+						<span>Degree:</span>
+						<span class="date">{session.degree}</span>
+					</div>
+					<div class="info-row">
+						<span>Progress:</span>
+						<span class="date">{session.passedEcts}/{session.ectsSum} ECTS | Ø{session.meanGrade}</span>
+					</div>
+					<div class="info-row">
+						<span>Session:</span>
+						<span class="seesionid">{session.id}</span>
+					</div>
+					<div class="info-row">
+						<span>Upated on:</span>
+						<!-- i18n auto insert en/de or others -->
+						<span class="date">{session.updatedAt.toLocaleDateString('de')} {session.updatedAt.toLocaleTimeString('de')}</span>
+					</div>
+				</ClickableTile>
+			</div>
+
 		{/each}
 	{/if}
 </div>
@@ -179,12 +191,17 @@
 			}
 		}
 
-		.info-row {
-			display: flex;
-			justify-content: space-between;
-			margin-bottom: 5px;
+		.tile-container {
+			margin: 5px 0px;
 
-			font-size: 1.1em;
+			.info-row {
+				display: flex;
+				justify-content: space-between;
+				margin-bottom: 5px;
+
+				font-size: 1.1em;
+			}
 		}
+
 	}
 </style>

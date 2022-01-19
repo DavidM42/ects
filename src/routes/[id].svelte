@@ -112,6 +112,10 @@
 			saving = true;
 			console.log('Saving');
 
+			// update session storage
+			SessionRemembering.addOrUpdate(saveData._id, saveData.degree, passedEcts, degreeEctsSum, meanGrade);
+
+			// then update database via backend
 			try {
 				const res = await fetch(`/sessions/${saveData._id}`, {
 					method: 'PUT',
@@ -192,7 +196,7 @@
 
 	onMount(async () => {
 		if (browser) {
-			SessionRemembering.add(saveData._id);
+			SessionRemembering.addOrUpdate(saveData._id, saveData.degree, passedEcts, degreeEctsSum, meanGrade);
 
 			// disable please rotate on dev server because hmr messes it up
 			if (!dev) {
