@@ -23,7 +23,7 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/env';
+	import { browser, dev } from '$app/env';
 
 	// dynamic theming in the browser dark and light according to browser preference
 	import "carbon-components-svelte/css/all.css";
@@ -38,6 +38,8 @@
 	import Semester from '$lib/components/Semester.svelte';
 	import RelationLegend from '$lib/components/RelationLegend.svelte';
 	import type { Course, Degree } from '$lib/types/degree';
+	import { SessionRemembering } from '$lib/sessionRemembering';
+	import Footer from '$lib/components/Footer.svelte';
 
 	export let saveData: Degree;
 	// console.log(saveData);
@@ -146,12 +148,15 @@
 	autoSave();
 
 	const deleteSession = async () => {
+		const id = saveData._id;
 		try {
-			const res = await fetch(`/sessions/${saveData._id}`, {
+			const res = await fetch(`/sessions/${id}`, {
 				method: 'DELETE'
 			});
 			if (res.ok) {
 				console.log('Deleted');
+				SessionRemembering.remove(id);
+
 				// don't warn user of unsaved changes anymore now
 				window.removeEventListener('beforeunload', unsavedChangesCloseListener);
 				window.location.href = '/';
@@ -195,15 +200,20 @@
 
 	onMount(async () => {
 		if (browser) {
-			// thx for import tip to https://github.com/sveltejs/kit/issues/905#issuecomment-816389084
-			const plsRotate = (await import('pleaserotate.js')).default;
-			// remind user to rotate to landscape on mobile because useless otherwise
-			const options = {
-				message: 'Please Rotate Your Device',
-				subMessage: 'Plan is too wide for portrait mode',
-				allowClickBypass: false
-			};
-			plsRotate.start(options);
+			SessionRemembering.add(saveData._id);
+
+			// disable please rotate on dev server because hmr messes it up
+			if (!dev) {
+				// thx for import tip to https://github.com/sveltejs/kit/issues/905#issuecomment-816389084
+				const plsRotate = (await import('pleaserotate.js')).default;
+				// remind user to rotate to landscape on mobile because useless otherwise
+				const options = {
+					message: 'Please Rotate Your Device',
+					subMessage: 'Plan is too wide for portrait mode',
+					allowClickBypass: false
+				};
+				plsRotate.start(options);
+				}
 		}
 	});
 
@@ -227,8 +237,6 @@
 </div>
 
 <div class="grid">
-	<RelationLegend {saveData} />
-
 	<div id="interaction-container">
 		<!-- Modal to confirm deletion -->
 		<Modal
@@ -243,12 +251,6 @@
 			<p>Deleting your personal plan is permanent and cannot be undone.</p>
 		</Modal>
 
-		<div id="button-container" class="first-row">
-			<Button size="small" on:click={addSemester}>Add semester</Button>
-			<Button size="small" kind="danger" on:click={() => (openedDeleteModal = true)}
-				>Delete all</Button
-			>
-		</div>
 		<div class="second-row">
 			<div class="url-snippet">
 				{#if browser}
@@ -269,6 +271,10 @@
 		</div>
 	</div>
 
+	<hr class="plan-seperator">
+
+	<RelationLegend {saveData} />
+
 	{#if saveData?.curriculum}
 		{#each saveData.curriculum as semester, i}
 			<!-- Two way binding input data but also always update saveData on changes out here -->
@@ -281,8 +287,14 @@
 		{/each}
 	{/if}
 
+	<div id="button-container" class="first-row">
+		<button on:click={addSemester}>Add semester</button>
+		<button class="danger" on:click={() => (openedDeleteModal = true)}>Purge plan</button>
+	</div>
+
 	<!-- /div.container -->
 </div>
+<Footer fixed={false}/>
 
 <style lang="scss">
 	h1 {
@@ -300,8 +312,12 @@
 		font-size: 1.3rem;
 		text-align: center;
 
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
 		div {
-			margin: 2px 0px;
+			margin: 2px 5px;
 		}
 
 		.number {
@@ -331,6 +347,41 @@
 				// should fit url and need defined size for skeleton in preload
 				width: 450px;
 		}
+	}
+
+	div#button-container {
+		margin-top: 10px;
+		width: 100%;
+		display: flex;
+		flex-direction: row;
+
+		button {
+			display: flex;
+			flex-grow: 1;
+			cursor: pointer;
+			padding: 10px;
+
+			// copied from carbon components button
+			// but carbon components flex full size restyle did not work
+			font-size: 1.1em;
+			border-width: 1px;
+			border-style: solid;
+			border-color: transparent;
+
+			color: var(--cds-text-04, #ffffff);
+			background-color: var(--cds-hover-primary, #0353e9);
+
+			&.danger {
+				background-color: var(--cds-danger-01, #da1e28);
+				color: var(--cds-text-04, #ffffff);
+			}
+		}
+	}
+
+	hr.plan-seperator {
+		background-color: var(--lt-color-background-default);
+		width: 100%;
+		height: 2px;
 	}
 
 	.grid {
