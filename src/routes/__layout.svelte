@@ -1,5 +1,5 @@
 <script lang="ts">
-    import Attribution from "$lib/components/Attribution.svelte";
+    // import Attribution from "$lib/components/Attribution.svelte";
 </script>
 
 
@@ -19,12 +19,5 @@
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
-	}
-	@media only screen and (min-width: 1150px) {
-		// desktop 
-
-	}
-	@media only screen and (max-width: 1149px) {
-		// mobile phone narrow
 	}
 </style>
