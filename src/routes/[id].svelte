@@ -25,14 +25,6 @@
 	import { onMount } from 'svelte';
 	import { browser, dev } from '$app/env';
 
-	// dynamic theming in the browser dark and light according to browser preference
-	import "carbon-components-svelte/css/all.css";
-	// import 'carbon-components-svelte/css/white.css';
-	// import 'carbon-components-svelte/css/g100.css';
-
-	import { themeChoice } from '$lib/themeChoice';
-	themeChoice();
-
 	import { Button, CodeSnippet, Modal, ProgressBar } from 'carbon-components-svelte';
 
 	import Semester from '$lib/components/Semester.svelte';

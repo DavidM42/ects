@@ -117,7 +117,9 @@
 	}
 
 	.modal-body {
-		background-color: var(--cds-ui-background);
+		// TODO make possible with dark mode again at some point
+		// background-color: var(--lt-color-gray-900);
+		background-color: #fff;
 		border-radius: 5px;
 
 		min-width: 500px;
