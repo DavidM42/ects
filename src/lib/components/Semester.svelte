@@ -247,9 +247,9 @@
 			flex-direction: column;
 
 			border-radius: 10px;
-			background-color: #ececec;
-			// background-color: var(--lt-color-text-default);
-			// color: var(--lt-color-background-default);
+			// inverted colors for cards with no borders 
+			background-color: var(--lt-color-text-default);
+			color: var(--lt-color-background-default);
 
 			margin: 5px 0px;
 
@@ -269,8 +269,7 @@
 		flex-direction: row;
 		justify-content: flex-start;
 
-		color: #3077c6;
-		// color: var(--lt-color-text-default);
+		color: var(--lt-color-text-default);
 
 		.module {
 			// needed as anchor for tooltip absolute positioning later
@@ -283,8 +282,7 @@
 			text-align: center;
 
 			margin: 5px;
-			background-color: #fff;
-			// background-color: var(--lt-color-background-default);
+			background-color: var(--lt-color-background-default);
 			border: 5px solid var(--relation-color, --fallback-color);
 			border-radius: 5px 0px;
 
@@ -292,7 +290,6 @@
 			&.feedback {
 				&--failed {
 					// TODO find way to only once define color
-					color: #333;
 					background-color: rgba(255, 0, 0, 0.6);
 					// first try out ux of bg-color probs
 					// thx to https://stackoverflow.com/a/24084708
@@ -300,12 +297,10 @@
 				}
 
 				&--passed {
-					color: #333;
 					background-color: rgba(0, 255, 0, 0.6);
 				}
 
 				&--forecast {
-					color: #333;
 					background-color: rgba(208, 116, 245, 0.6);
 				}
 			}
@@ -331,7 +326,7 @@
 
 				&.customname {
 					font-style: italic;
-					color: #333;
+					// color: #3077c6
 				}
 			}
 

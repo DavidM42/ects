@@ -39,7 +39,12 @@
 <script lang="ts">
 	import { prefetch } from '$app/navigation';
 
-	import 'carbon-components-svelte/css/white.css';
+	// dynamic theming in the browser dark and light according to browser preference
+	import "carbon-components-svelte/css/all.css";
+
+	import { themeChoice } from '$lib/themeChoice';
+	themeChoice();
+
 	import { Button, Dropdown } from 'carbon-components-svelte';
 	import { onMount } from 'svelte';
 

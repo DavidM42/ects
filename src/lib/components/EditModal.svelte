@@ -117,7 +117,8 @@
 	}
 
 	.body {
-		background-color: white;
+		background-color: var(--lt-color-text-default);
+		color: var(--lt-color-background-default);
 		border-radius: 5px;
 
 		min-width: 500px;

@@ -42,12 +42,14 @@
 		height: 40px;
 
         .relation {
-            margin: 5px;
+            margin: 2px;
             padding: 5px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 1.25em;
+            background-color: var(--lt-color-background-default);
+            color: var(--lt-color-text-default);
         }
 
 	}
