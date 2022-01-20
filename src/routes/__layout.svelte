@@ -1,7 +1,4 @@
 <script lang="ts">
-
-    // import Attribution from "$lib/components/Attribution.svelte";
-
 	// ibm carbon theming
 	import { Theme } from 'carbon-components-svelte';
 	import 'carbon-components-svelte/css/all.css';
@@ -17,12 +14,8 @@
     <slot></slot>
 </div>
 
-<!-- disabled for now as interferred with ui/ux -->
-<!-- <Attribution/> -->
-
-
 <style lang="scss">
-    // general styles
+	// general styles
 	div.content {
 		width: 100%;
 		display: flex;
