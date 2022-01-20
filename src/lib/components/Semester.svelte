@@ -164,7 +164,7 @@
 				<!-- on first element in first semester include tooltip how to double tap and use -->
 				{#if semesterIndex === 0 && itemIndex === 0}
 					<div class="help-tooltip">
-						<Tooltip>
+						<Tooltip iconDescription="Double click explanation help">
 							<p id="tooltip-body">
 								Double click course to edit
 							</p>

@@ -216,8 +216,13 @@
 	// setTimeout(() => console.log(saveData), 10000);
 </script>
 
+<svelte:head>
+	<title>ects.wuel.de - {saveData.degree} - session {saveData._id}</title>
+	<meta name="description" content="Planning of your degree {saveData.degree}">
+</svelte:head>
+
 <h1>{import.meta.env.VITE_APP_DOMAIN}</h1>
-<h3>{saveData.degree}</h3>
+<h2>{saveData.degree}</h2>
 <div id="stats-container">
 	<div class="ects">
 		<ProgressBar
@@ -299,7 +304,7 @@
 		margin-bottom: 5px;
 	}
 
-	h3 {
+	h2 {
 		font-size: 1.5rem;
 		margin-bottom: 5px;
 	}

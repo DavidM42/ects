@@ -3,7 +3,7 @@
 </script>
 
 <footer class:fixed>
-	<p>Built with ❤️ as <a target="_blank" href="https://github.com/DavidM42/ects/">Open-Source-Software</a> by David</p>
+	<p>Built with ❤️ as <a target="_blank" href="https://github.com/DavidM42/ects/" rel="noreferrer">Open-Source-Software</a> by David</p>
 </footer>
 
 

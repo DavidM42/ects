@@ -8,6 +8,7 @@ const config = {
 	compilerOptions: {
 		enableSourcemap: true,
 	},
+	// thx for sourcemaps stuff to https://stackoverflow.com/a/70522821/
 	preprocess: preprocess({
 	sourceMap: true,
 	}),

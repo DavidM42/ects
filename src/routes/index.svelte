@@ -105,6 +105,11 @@
 	};
 </script>
 
+<svelte:head>
+	<title>ects.wuel.de - Study planning and progress tracking</title>
+	<meta name="description" content="Plan your studies at University of Würzburg and track you progress at achieving your degree">
+</svelte:head>
+
 <h1>{import.meta.env.VITE_APP_DOMAIN}</h1>
 
 <!-- TODO i18n for title -->
