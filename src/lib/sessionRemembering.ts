@@ -3,8 +3,7 @@ const LOCALSTORAGE_KEY = 'previousSession'
 export interface PreviousSession {
     id: string,
     updatedAt: Date,
-    // TODO university name when added to degree as property
-    degree: string,
+    degrees: string[],
     passedEcts: number,
     ectsSum: number,
     meanGrade: number,
@@ -13,13 +12,13 @@ export interface PreviousSession {
 export class SessionRemembering {
 
     /** Save object with all last sessions in localstorage to show on index page */
-    static addOrUpdate(sessionId: string, degree: string, passedEcts: number, ectsSum: number, meanGrade: number): void {
-        console.log(`Adding or updating locastorage rememberance of session ${sessionId}`);
+    static addOrUpdate(sessionId: string, degrees: string[], passedEcts: number, ectsSum: number, meanGrade: number): void {
+        console.log(`Adding or updating localstorage rememberance of session ${sessionId}`);
         const savedSessions = window.localStorage.getItem(LOCALSTORAGE_KEY);
         const previousSessions = savedSessions ? JSON.parse(savedSessions) : {};
         previousSessions[sessionId] = {
             updatedAt: new Date(),
-            degree: degree,
+            degrees: degrees,
             passedEcts: passedEcts,
             ectsSum: ectsSum,
             meanGrade: meanGrade
@@ -51,7 +50,7 @@ export class SessionRemembering {
             return {
                 id: key,
                 updatedAt: new Date(previousSessions[key].updatedAt),
-                degree: previousSessions[key].degree,
+                degrees: previousSessions[key].degrees,
                 passedEcts: previousSessions[key].passedEcts,
                 ectsSum: previousSessions[key].ectsSum,
                 meanGrade: previousSessions[key].meanGrade

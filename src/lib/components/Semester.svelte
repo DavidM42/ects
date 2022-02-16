@@ -2,25 +2,43 @@
 	import { createEventDispatcher } from 'svelte';
 	import { flip } from 'svelte/animate';
 
-	import Reset16 from 'carbon-icons-svelte/lib/Reset16';
-	import Edit16 from 'carbon-icons-svelte/lib/Edit16';
 	import Delete20 from "carbon-icons-svelte/lib/Delete20";
 
 	import { Tooltip } from 'carbon-components-svelte';
 
-	import { dndzone } from 'svelte-dnd-action';
-
 	// thx https://github.com/isaacHagoel/svelte-dnd-action#overriding-the-item-id-key-name
 	// needed because of mongoDB auto id using _id not id for modules
-	import { overrideItemIdKeyNameBeforeInitialisingDndZones } from 'svelte-dnd-action';
+	import {dndzone, TRIGGERS, overrideItemIdKeyNameBeforeInitialisingDndZones} from 'svelte-dnd-action';
 	overrideItemIdKeyNameBeforeInitialisingDndZones('_id');
 
-	import type { Course } from '$lib/types/degree';
+	import type { Course, CourseTypes } from '$lib/types/interfaces/SaveData';
+	import { beforeDragSemesters, dragAffectedSemesters, dragStartSemester } from '$lib/stores/dragStartStore';
+	import { curriculum } from '$lib/stores/curriculumStore';
 	import EditModal from './EditModal.svelte';
 	const flipDurationMs = 200;
 
 	export let semesterIndex: number;
-	export let items = [];
+	export let items: Course[] = [];
+
+	/** Number of semesters in grid so one more than maxSemester */
+	export let semesterCount: number;
+
+	/**
+	 * Determines given course is either a non multi semester course or at least ends in this semester.
+	 * If it returns false course can be treated as non graded precursor within this semester.
+	 */
+	function isNotMultiOrEndingInThisSemester(course: Course): boolean {
+		const isMultiSemesterCourse = course.multisemester || course.semesters.length > 1;
+			if (isMultiSemesterCourse) {
+				const isLastSemesterInCourse = Math.max(...course.semesters) === semesterIndex;
+				if (isLastSemesterInCourse) {
+					return true;
+				} else {
+					return false;
+				}
+			}
+		return true;
+	}
 
 	/******* ECTS and grade calculation for semester ********/
 	/** Combined ects of all courses you passed in this semester*/
@@ -37,8 +55,15 @@
 		let gradedCourseEctsSum = 0;
 		let weightedGradeSum = 0;
 
-		items.forEach((item) => {
+		// get straight from curriculum store not items because items is not updated yet when this is called via dragAffectedSemesters subscription
+		$curriculum.filter(item => item.semesters.includes(semesterIndex)).forEach((item) => {
 			const ects = item.ects;
+
+			// for multisemester courses only add ects count and grades to last semester which the course is entered in
+			if (!isNotMultiOrEndingInThisSemester(item)) {
+				return;
+			}
+
 			semesterEctsSum += ects;
 
 			const hasGrade = item.state.result?.grade;
@@ -57,12 +82,105 @@
 	};
 	calcSemesterValues();
 
-	/**** Resorting stuff handler for dnd lib *****/
-	function handleSort(e) {
+	// re calculate on any change affecting this semester too
+	// for example when multi semester course was moved into this too
+	dragAffectedSemesters.subscribe((semesters) => {
+		if (semesters && semesters.includes(semesterIndex)) {
+			calcSemesterValues();
+		}
+	});
+
+	/** Changes in DnD but not dropped final into place **/
+	function handleConsider(e, eventSourceSemesterIndex) {
 		items = e.detail.items;
-		calcSemesterValues();
-		dispatch('updated', items);
+
+		// when starting drag then remove previous semester from course semesters
+		if (e.detail.info.trigger === TRIGGERS.DRAG_STARTED) {
+			const movedItemIndex = $curriculum.findIndex((item) => item._id === e.detail.info.id);
+			if (movedItemIndex > -1) {
+				const previousSemester = $curriculum[movedItemIndex].semesters; 
+
+				// retain values to calculate stuff from or reset on invalid move
+				beforeDragSemesters.set(previousSemester);
+				dragStartSemester.set(eventSourceSemesterIndex);
+
+				// remove previous semester from semesters array
+				$curriculum[movedItemIndex].semesters = [];
+
+				// notify all affected semesters to recalculate their sums
+				dragAffectedSemesters.set(previousSemester);
+			}
+		}
+
+		// done via dragAffectedSemesters subscription
+		// calcSemesterValues();
 	}
+
+	/** Element is dropped into place */
+	function handleFinalize(e, eventSourceSemesterIndex) {
+		items = e.detail.items;
+		// TODO Do we need manual sorting of multi semester modules to be under one another?
+		// items = items.sort((a, b) => {
+		// 	if (a.semesters.length === b.semesters.length) {
+		// 		return 0;
+		// 	}
+		// 	return a.semesters.length > b.semesters.length? -1: 1;
+		// 	// if (a.multisemester && !b.multisemester) {
+		// 	// 	return -1;
+		// 	// } else if(!a.multisemester && b.multisemester) {
+		// 	// 	return 1;
+		// 	// } else if (a.multisemester && b.multisemester) {
+		// 	// 	return a.semesters.length - b.semesters.length;
+		// 	// } else {
+		// 	// 	return 0;
+		// 	// }
+		// })
+
+		// if finished dropping into a semester then add new semester to its array
+		const droppedInZone = e.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE;
+		const droppedOutsideZone = e.detail.info.trigger === TRIGGERS.DROPPED_OUTSIDE_OF_ANY;
+		const itemDropped = droppedInZone || droppedOutsideZone;
+
+		if (itemDropped) {
+			const movedItemIndex = $curriculum.findIndex((item) => item._id === e.detail.info.id);
+			if (movedItemIndex > -1) {
+				// add semester where it's newly dropped into into it's semesters array
+				// wholeCurriculum[movedItemIndex].semesters.push(eventSourceSemesterIndex);
+				const dragDelta = eventSourceSemesterIndex - $dragStartSemester;
+
+				/* Check if any move would be out of bounds */
+				const minPreviousSemester = Math.min(...$beforeDragSemesters);
+				const maxPreviousSemester = Math.max(...$beforeDragSemesters);
+				const lowerThan0 = minPreviousSemester + dragDelta < 0;
+				const higherThanMaxSemester = maxPreviousSemester + dragDelta > (semesterCount - 1);
+				const outOfBounds = lowerThan0 || higherThanMaxSemester;
+
+				if (outOfBounds) {
+					// reset
+					$curriculum[movedItemIndex].semesters = $beforeDragSemesters;
+					// TODO nicer warning ui and wording
+					alert('You can\'t move a multisemester course to a semester that\'s producing out of bounds results');
+				} else {
+					// do the move of all semester values by delta
+					$curriculum[movedItemIndex].semesters = $beforeDragSemesters.map((semester) => semester + dragDelta);
+				}
+
+				// notify all semesters which have been affected by this move
+				dragAffectedSemesters.set($curriculum[movedItemIndex].semesters);
+			}
+		}
+
+		// done via dragAffectedSemesters subscription
+		// calcSemesterValues();
+	}
+
+	function transformDraggedElement(draggedEl: HTMLDivElement, data: Course, index: number) {
+		// only need to re style multi semester courses
+		if (data.semesters.length > 1) {
+			draggedEl.style.height = `calc((var(--semester-all-in-height) + 2px) * ${data.semesters.length})`;
+		}
+	}
+
 
 
 	/********* Editing courses stuff *********/
@@ -76,25 +194,45 @@
 
 	/** Finish course edit and apply new course over it*/
 	const finishCourseEdit = (ev: CustomEvent<Course>) => {
-		const courseIndex = items.findIndex((item) => item._id === ev.detail._id);
-		items[courseIndex] = ev.detail; 
+		const courseIndex = $curriculum.findIndex((item) => item._id === ev.detail._id);
+		$curriculum[courseIndex] = ev.detail; 
 		courseToEdit = undefined;
 		editModalShown = false;
 		calcSemesterValues();
-		dispatch('updated', items);
 	}
 
 	/** Reset a courses state like passed or grade */
 	const resetCourseState = (ev: CustomEvent<Course>) => {
-		const courseIndex = items.findIndex((item) => item._id === ev.detail._id);
-		items[courseIndex].state.result = {};
-		delete items[courseIndex].customname;
+		const courseIndex =  $curriculum.findIndex((item) => item._id === ev.detail._id);
+		$curriculum[courseIndex].state.result = undefined;
+		delete  $curriculum[courseIndex].state.result;
+		delete  $curriculum[courseIndex].customname;
 
 		courseToEdit = undefined;
 		editModalShown = false;
 		calcSemesterValues();
-		dispatch('updated', items);
 	}
+
+
+	/**
+	 * Translate the course type object into a user displayable string
+	*/
+	const courseTypesObjToString = (courseTypesObj: CourseTypes) => {
+		// TODO i18n in here
+		let courseTypesString = '';
+		for (const key in courseTypesObj) {
+			if (courseTypesObj[key] === true || courseTypesObj[key] === 1) {
+				courseTypesString += key + ', ';
+			} else if (courseTypesObj[key] >= 1) {
+				courseTypesString += `${courseTypesObj[key]}*${key}, `;
+			}
+		}
+
+		// hard code replace UE for übung wie Ü
+		courseTypesString = courseTypesString.replace(/UE/g, 'Ü');
+
+		return courseTypesString.slice(0, -2);
+	};
 
 	const dispatch = createEventDispatcher();
 </script>
@@ -122,24 +260,28 @@
 			<div class="semester-remove" on:click={() => dispatch('semesterDelete')}><Delete20 /></div>
 		{/if}
 	</div>
-	<!-- TODO make clickable to mark as done, failed, todo and so on -->
 	<div
 		class="module-container"
-		use:dndzone={{ items, flipDurationMs }}
-		on:consider={handleSort}
-		on:finalize={handleSort}
-	>
+		aria-label="Semester {semesterIndex + 1}"
+		use:dndzone={{ items, flipDurationMs, transformDraggedElement }}
+		on:consider={(e) => {handleConsider(e, semesterIndex)}}
+		on:finalize={(e) => {handleFinalize(e, semesterIndex)}}>
 		<!-- TODO abstract module into a seperate component with update function -->
 		<!-- TODO and then rename it all course  -->
 		{#each items as item, itemIndex (item._id)}
 			<div
 				class="module"
+				aria-label="{item.fullname} {item.customname? `bzw. ${item.customname}`: ''}"
 				on:dblclick={() => startCourseEdit(item)}
 				animate:flip={{ duration: flipDurationMs }}
-				style="--relation-color: {item.relation?.color || '#ececec'};"
+				style="--relation-color: {item.relation?.color || '#ececec'}; --calculated-width: calc(60% / 30 * {item.ects || 5});"
 				class:feedback--passed={item.state?.result?.passed || (item.state?.result?.grade <= 4.0 && item.state?.result?.grade > 0.0)}
 				class:feedback--failed={item.state?.result?.passed === false || item.state?.result?.grade > 4.0}
 				class:feedback--forecast={item.state?.result?.forecast}
+				
+				class:multisemester--first={item.semesters?.length > 1 && Math.min(...item.semesters) === semesterIndex}
+				class:multisemester--middle={item.semesters?.length > 1 && Math.min(...item.semesters) !== semesterIndex && Math.max(...item.semesters) !== semesterIndex}
+				class:multisemester--last={item.semesters?.length > 1 && Math.max(...item.semesters) === semesterIndex}
 			>
 				<div class="shortname">{item.shortname}</div>
 
@@ -150,15 +292,17 @@
 					<div class="fullname">{item.fullname}</div>
 				{/if}
 
-				<div class="number-results-row">
-					<span class="ects">{item.ects}</span> ects
-					{#if item.state?.result?.grade}
-						/ <span class="grade">{item.state.result.grade}</span>
-					{/if}
-				</div>
+				{#if isNotMultiOrEndingInThisSemester(item)}
+					<div class="number-results-row">
+						<span class="ects">{item.ects}</span> ects
+						{#if item.state?.result?.grade}
+							/ <span class="grade">{item.state.result.grade}</span>
+						{/if}
+					</div>
+				{/if}
 
-				{#if item.types && item.types.length > 0}
-					<div class="types">{`(${item.types.join(',')})`}</div>
+				{#if item.types}
+					<div class="types">{`(${courseTypesObjToString(item.types)})`}</div>
 				{/if}
 
 				<!-- on first element in first semester include tooltip how to double tap and use -->
@@ -178,13 +322,20 @@
 </div>
 
 <style lang="scss">
+	// desktop
+
 	@media only screen and (min-width: 1150px) {
-		// desktop
+		:root {
+			// row only 120px on desktop because more horizontal space for text exists
+			--semester-base-height: 120px;
+			// semester height plus margins approximate for multi semester courses drag hover
+			--semester-all-in-height: 122px;
+		}
+
 		.semester {
 			flex-direction: row;
 
-			// row only 120px on desktop because more horizontal space for text exists
-			height: 120px;
+			height: var(--semester-base-height, 120px);
 
 			.semester-info {
 				// defined 110px width on desktop
@@ -197,14 +348,21 @@
 				width: 95vw;
 
 				.module {
-					width: 10vw;
+					min-width: 7.5vw;
+					width: var(--calculated-width, 10vw);
 				}
 			}
 		}
 	}
 
+	// mobile phone narrow
 	@media only screen and (max-width: 1149px) {
-		// mobile phone narrow
+		:root {
+			// taller rows on mobile for text lines
+			--semester-base-height: 175px;
+			// semester height plus margins approximate for multi semester courses drag hover
+			--semester-all-in-height: 200px;
+		}
 
 		.semester {
 			flex-direction: column;
@@ -222,10 +380,12 @@
 
 			.module-container {
 				// taller rows on mobile for text lines
-				height: 175px;
+				height: var(--semester-base-height, 175px);
 
 				.module {
-					width: 20vw;
+					// width: 20vw;
+					min-width: 10vw;
+					width: var(--calculated-width, 10vw);
 				}
 			}
 		}
@@ -273,6 +433,10 @@
 		color: var(--lt-color-text-default, #161616);
 
 		.module {
+			// very new but very helpful for mobile scrolling bug
+			// see https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action
+			touch-action: none;
+
 			// needed as anchor for tooltip absolute positioning later
 			position: relative;
 
@@ -285,7 +449,7 @@
 			// inverted theme from rest to contrast
 			background-color: var(--lt-color-background-default, #fff);
 
-			margin: 5px;
+			margin: 5px 2px;
 			border: 5px solid var(--relation-color, --fallback-color);
 			border-radius: 5px 0px;
 
@@ -305,6 +469,21 @@
 
 				&--forecast {
 					background-color: rgba(208, 116, 245, 0.6);
+				}
+			}
+
+			&.multisemester {
+				&--first {
+					border-bottom: none;
+				}
+
+				&--middle {
+					border-top: none;
+					border-bottom: none;
+				}
+
+				&--last {
+					border-top: none;
 				}
 			}
 

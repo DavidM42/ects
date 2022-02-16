@@ -8,12 +8,10 @@
 
         const relationsWDuplicates = new Array<{color: string, name: string}>();
 
-        saveData.curriculum.forEach(semester => {
-            semester.forEach(mod => {
-                if (mod.relation) {
-                    relationsWDuplicates.push(mod.relation);
-                }
-            });
+        saveData.curriculum.forEach(course => {
+            if (course.relation) {
+                relationsWDuplicates.push(course.relation);
+            }
         });
         // thx https://stackoverflow.com/a/58429784
         const uniqueRelations = [...new Map(relationsWDuplicates.map(item => [item.color, item])).values()];

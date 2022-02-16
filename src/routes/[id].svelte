@@ -5,7 +5,7 @@
 		const res = await fetch(url);
 
 		if (res.ok) {
-			const json: Degree = await res.json();
+			const json: SaveData = await res.json();
 
 			return {
 				props: {
@@ -25,16 +25,19 @@
 	import { onMount } from 'svelte';
 	import { browser, dev } from '$app/env';
 
-	import { Button, CodeSnippet, Modal, ProgressBar } from 'carbon-components-svelte';
+	import { CodeSnippet, Modal, ProgressBar } from 'carbon-components-svelte';
 
 	import Semester from '$lib/components/Semester.svelte';
 	import RelationLegend from '$lib/components/RelationLegend.svelte';
-	import type { Course, Degree } from '$lib/types/degree';
+	import type { Course, SaveData } from '$lib/types/interfaces/SaveData';
 	import { SessionRemembering } from '$lib/sessionRemembering';
 	import Footer from '$lib/components/Footer.svelte';
+	import { curriculum } from '$lib/stores/curriculumStore';
 
-	export let saveData: Degree;
-	// console.log(saveData);
+	export let saveData: SaveData;
+
+	// initial value set
+	curriculum.set(saveData.curriculum);
 
 	let changedSinceLastSaveTime = false;
 	let saving = false;
@@ -56,20 +59,18 @@
 		let gradedCourseEctsSum = 0;
 		let weightedGradeSum = 0;
 
-		saveData.curriculum.forEach((semester) => {
-			semester.forEach((item) => {
-				const ects = item.ects;
-				degreeEctsSum += ects;
+		$curriculum.forEach((item) => {
+			const ects = item.ects;
+			degreeEctsSum += ects;
 
-				const hasGrade = item.state.result?.grade;
-				if (item.state.result?.passed || (hasGrade && item.state.result.grade < 4.0)) {
-					passedEcts += ects;
-				}
-				if (hasGrade) {
-					gradedCourseEctsSum += ects;
-					weightedGradeSum += ects * item.state.result.grade;
-				}
-			});
+			const hasGrade = item.state.result?.grade;
+			if (item.state.result?.passed || (hasGrade && item.state.result.grade < 4.0)) {
+				passedEcts += ects;
+			}
+			if (hasGrade) {
+				gradedCourseEctsSum += ects;
+				weightedGradeSum += ects * item.state.result.grade;
+			}
 		});
 		// calculate mean grade this semester
 		const exactMeanGrade = gradedCourseEctsSum ? weightedGradeSum / gradedCourseEctsSum : null;
@@ -92,28 +93,18 @@
 		return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 	};
 
-	const onUpdatedSemester = (semesterIndex: number, newData: Course[]) => {
-		saveData.curriculum[semesterIndex] = newData;
-		changedSinceLastSaveTime = true;
-		calcDegreeValues();
-
-		// TODO activate again when finishing and failing and so on is implemented for modules to calc progress
-		// calcDegreeEcts();
-
-		window.addEventListener('beforeunload', unsavedChangesCloseListener);
-	};
-
 	// TODO ui feedback that it is saving and when?
 	/**
 	 * Calls itself once every minute and if any change was recorded saves it to mongodb
 	 */
 	const autoSave = async () => {
+		// only autoSave while in runtime browser and has unsaved changes
 		if (changedSinceLastSaveTime) {
 			saving = true;
 			console.log('Saving');
 
 			// update session storage
-			SessionRemembering.addOrUpdate(saveData._id, saveData.degree, passedEcts, degreeEctsSum, meanGrade);
+			SessionRemembering.addOrUpdate(saveData._id, saveData.degrees, passedEcts, degreeEctsSum, meanGrade);
 
 			// then update database via backend
 			try {
@@ -143,6 +134,21 @@
 	};
 	autoSave();
 
+	const onUpdatedCurriculum = (curriculum: Course[]) => {
+		saveData.curriculum = curriculum;
+
+		changedSinceLastSaveTime = true;
+		calcDegreeValues();
+
+		window.addEventListener('beforeunload', unsavedChangesCloseListener);
+	};
+
+	// and subscribe to sync with saveData and trigger more logic
+	// but only needed in browser runtime not in prerendering
+	if (browser) {
+		curriculum.subscribe(onUpdatedCurriculum);
+	}
+
 	const deleteSession = async () => {
 		const id = saveData._id;
 		try {
@@ -166,7 +172,8 @@
 
 	/** Adds a new semester, saved and reload page. Reload needed because dnd zones can't be re initialized */
 	const addSemester = async () => {
-		saveData.curriculum.push([]);
+		// TODO FIX THIS WHY IT NO WORKY
+		saveData.semesters++;
 		changedSinceLastSaveTime = true;
 		await autoSave();
 		window.location.reload();
@@ -174,7 +181,7 @@
 
 	/** Removes semester at position i */
 	const removeSemester = async (i: number) => {
-		saveData.curriculum.splice(i, 1);
+		saveData.semesters--;
 		changedSinceLastSaveTime = true;
 		await autoSave();
 		window.location.reload();
@@ -196,7 +203,7 @@
 
 	onMount(async () => {
 		if (browser) {
-			SessionRemembering.addOrUpdate(saveData._id, saveData.degree, passedEcts, degreeEctsSum, meanGrade);
+			SessionRemembering.addOrUpdate(saveData._id, saveData.degrees, passedEcts, degreeEctsSum, meanGrade);
 
 			// disable please rotate on dev server because hmr messes it up
 			if (!dev) {
@@ -217,12 +224,12 @@
 </script>
 
 <svelte:head>
-	<title>ects.wuel.de - {saveData.degree} - session {saveData._id}</title>
-	<meta name="description" content="Planning of your degree {saveData.degree}">
+	<title>ects.wuel.de - {saveData.degrees} - session {saveData._id}</title>
+	<meta name="description" content="Planning of your degree {saveData.degrees}">
 </svelte:head>
 
 <h1>{import.meta.env.VITE_APP_DOMAIN}</h1>
-<h2>{saveData.degree}</h2>
+<h2>{saveData.degrees.join(' & ')}</h2>
 <div id="stats-container">
 	<div class="ects">
 		<ProgressBar
@@ -274,15 +281,17 @@
 
 	<hr class="plan-seperator">
 
+	<!-- TODO also legend for shortcuts with v,s,t,ue,p,th -->
 	<RelationLegend {saveData} />
 
 	{#if saveData?.curriculum}
-		{#each saveData.curriculum as semester, i}
+		{#each Array(saveData.semesters) as _, i}
 			<!-- Two way binding input data but also always update saveData on changes out here -->
+			<!-- TODO fix my id with non arrays not working with lib I think :( -->
 			<Semester
 				semesterIndex={i}
-				items={saveData.curriculum[i]}
-				on:updated={(e) => onUpdatedSemester(i, e.detail)}
+				semesterCount={saveData.semesters}
+				items={$curriculum.filter(item => item.semesters.includes(i))}
 				on:semesterDelete={() => removeSemester(i)}
 			/>
 		{/each}
