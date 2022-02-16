@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 
 import { MongoosePromise, SessionSave } from '$lib/db';
 import type { DegreeDefault } from '$lib/types/interfaces/degreeDefault';
-import { degreeOptionSchema } from '$lib/types/db-schemas/degreeDefault';
+import { degreeOptionSchema } from '$lib/types/db-schemas/degreeDefaultOption';
 
 async function getDegreeDefault(universityKey: string, degreeId: string) {
     const universityCollection = `degrees-${universityKey}`;

@@ -3,8 +3,8 @@ import type { EndpointOutput } from '@sveltejs/kit';
 import mongoose from "mongoose";
 
 import { MongoosePromise } from '$lib/db';
-import type { DefaultDegreeOption } from '$lib/types/interfaces/degreeOptions';
-import { degreeOptionSchema } from '$lib/types/db-schemas/degreeDefault';
+import type { DegreeDefaultOption } from '$lib/types/interfaces/degreeDefaultOption';
+import { degreeOptionSchema } from '$lib/types/db-schemas/degreeDefaultOption';
 
 export async function get({params}): Promise<EndpointOutput> {
     const universityCollection = `degrees-${params.university}`;
@@ -18,7 +18,7 @@ export async function get({params}): Promise<EndpointOutput> {
         try {
             const allDegreeDefaults = await DegreeDefaults.find({});
     
-            const options: Array<DefaultDegreeOption> = [];
+            const options: Array<DegreeDefaultOption> = [];
     
             for (const degreeDefault of allDegreeDefaults) {
                 options.push({
