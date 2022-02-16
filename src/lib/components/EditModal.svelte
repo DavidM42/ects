@@ -63,37 +63,37 @@
 		<span class="close" on:click={() => dispatch('close')}><CloseFilled20 /></span>
 		<div class="content-wrapper">
 			<Form on:submit={() => dispatch('update', course)}>
-				<FormGroup>
-					<TextInput id="custom-nane" size="sm" labelText="Custom name" bind:value={course.customname} />
-				</FormGroup>
+				<TextInput id="custom-name" size="sm" labelText="Custom name" bind:value={course.customname} />
 
-				<FormGroup legendText="Status">
-                    <Checkbox
-                        id="forecast"
-                        labelText="Forecast only"
-                        bind:checked={course.state.result.forecast}
-                    />
-                    {#if !course.state?.options || (course.state.options.passable && !course.state.options.gradeable)}
-                        <!-- checkbox shown if passable but not gradeable or no info about options -->
-                        <Checkbox id="passed" labelText="Passed" bind:checked={course.state.result.passed} />
-                    {/if}
-                    {#if !course.state?.options || course.state.options.gradeable}
-                        <!-- TODO are bounds correct for studying? -->
-                        <!-- grade number input shown if gradeable or no info about options -->
-                        <NumberInput
-                            id="grade"
-                            step={0.1}
-                            max={5.0}
-                            allowEmpty={true}
-                            label="Grade"
-                            size="sm"
-                            bind:value={course.state.result.grade}
-                        />                        
-                    {/if}
-				</FormGroup>
+				<div class="status-wrapper">
+					<Checkbox
+						id="forecast"
+						labelText="Forecast only"
+						bind:checked={course.state.result.forecast}
+					/>
+					{#if !course.state?.options || (course.state.options.passable && !course.state.options.gradeable)}
+						<!-- checkbox shown if passable but not gradeable or no info about options -->
+						<Checkbox id="passed" labelText="Passed" bind:checked={course.state.result.passed} />
+					{/if}
+
+					{#if !course.state?.options || course.state.options.gradeable}
+						<!-- TODO are bounds correct for studying? -->
+						<!-- grade number input shown if gradeable or no info about options -->
+						<NumberInput
+							id="grade"
+							step={0.1}
+							max={5.0}
+							allowEmpty={true}
+							label="Grade"
+							size="sm"
+							bind:value={course.state.result.grade}
+						/>                        
+					{/if}
+				</div>
+
 				<div id="button-container">
-					<Button type="submit">Save</Button>
-					<Button kind="danger" on:click={() => dispatch('reset', course)}>Reset</Button>
+					<Button size="small" type="submit">Save</Button>
+					<Button size="small" kind="danger" on:click={() => dispatch('reset', course)}>Reset</Button>
 				</div>
 			</Form>
 		</div>
@@ -135,6 +135,11 @@
 			div#button-container {
 				display: flex;
 				justify-content: space-between;
+			}
+
+			div.status-wrapper {
+				margin-top: 5px;
+				margin-bottom: 5px;
 			}
 		}
 	}
