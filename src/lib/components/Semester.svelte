@@ -177,7 +177,7 @@
 	function transformDraggedElement(draggedEl: HTMLDivElement, data: Course, index: number) {
 		// only need to re style multi semester courses
 		if (data.semesters.length > 1) {
-			draggedEl.style.height = `calc((var(--semester-all-in-height) + 2px) * ${data.semesters.length})`;
+			draggedEl.style.height = `calc((var(--semester-calculator-base-height) + 2px) * ${data.semesters.length})`;
 		}
 	}
 
@@ -263,7 +263,7 @@
 	<div
 		class="module-container"
 		aria-label="Semester {semesterIndex + 1}"
-		use:dndzone={{ items, flipDurationMs, transformDraggedElement }}
+		use:dndzone={{ items, flipDurationMs, transformDraggedElement, centreDraggedOnCursor: true}}
 		on:consider={(e) => {handleConsider(e, semesterIndex)}}
 		on:finalize={(e) => {handleFinalize(e, semesterIndex)}}>
 		<!-- TODO abstract module into a seperate component with update function -->
@@ -274,7 +274,7 @@
 				aria-label="{item.fullname} {item.customname? `bzw. ${item.customname}`: ''}"
 				on:dblclick={() => startCourseEdit(item)}
 				animate:flip={{ duration: flipDurationMs }}
-				style="--relation-color: {item.relation?.color || '#ececec'}; --calculated-width: calc(60% / 30 * {item.ects || 5});"
+				style="--relation-color: {item.relation?.color || '#ececec'}; --calculated-width: calc(60% / 30 * {(item.ects || 5) / item.semesters.length});"
 				class:feedback--passed={item.state?.result?.passed || (item.state?.result?.grade <= 4.0 && item.state?.result?.grade > 0.0)}
 				class:feedback--failed={item.state?.result?.passed === false || item.state?.result?.grade > 4.0}
 				class:feedback--forecast={item.state?.result?.forecast}
@@ -329,7 +329,7 @@
 			// row only 120px on desktop because more horizontal space for text exists
 			--semester-base-height: 120px;
 			// semester height plus margins approximate for multi semester courses drag hover
-			--semester-all-in-height: 122px;
+			--semester-calculator-base-height: 100px;
 		}
 
 		.semester {
@@ -361,7 +361,7 @@
 			// taller rows on mobile for text lines
 			--semester-base-height: 175px;
 			// semester height plus margins approximate for multi semester courses drag hover
-			--semester-all-in-height: 200px;
+			--semester-calculator-base-height: 200px;
 		}
 
 		.semester {

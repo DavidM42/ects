@@ -34,6 +34,7 @@
 	import { SessionRemembering } from '$lib/sessionRemembering';
 	import Footer from '$lib/components/Footer.svelte';
 	import { curriculum } from '$lib/stores/curriculumStore';
+	import { courseSortPredicate } from '$lib/courseSorter';
 
 	export let saveData: SaveData;
 
@@ -291,7 +292,7 @@
 			<Semester
 				semesterIndex={i}
 				semesterCount={saveData.semesters}
-				items={$curriculum.filter(item => item.semesters.includes(i))}
+				items={$curriculum.filter(item => item.semesters.includes(i)).sort(courseSortPredicate)}
 				on:semesterDelete={() => removeSemester(i)}
 			/>
 		{/each}
