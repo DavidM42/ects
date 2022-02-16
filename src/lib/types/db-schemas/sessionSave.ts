@@ -1,15 +1,19 @@
 import { Schema } from 'mongoose';
 
-import { curriculumSchema } from './curriculum';
+import { courseSchema } from './course';
 
 export const sessionSaveSchema = new Schema({
+    // TODO sort here in same order as in SaveData interface
     universityId: String,
     degrees: [String],
     lang: String,
     createdAt: Date,
     updatedAt: Date,
 
-    curriculum: curriculumSchema
+    /** Number of semesters shown in grid */
+    semesters: Number,
+
+    curriculum: [courseSchema]
 });
 
 

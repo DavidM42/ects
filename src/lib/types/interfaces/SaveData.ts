@@ -17,6 +17,9 @@ export interface Course {
      * Needed for drag and drop identification */
     _id: string,
 
+    /** Array of semesters indexed by 0 this course is taken in */
+    semesters: number[],
+
     fullname: string,
     shortname: string,
     customname?: string,
@@ -59,7 +62,8 @@ export interface SaveData {
     universityId: string,
     degrees: string[],
     lang: string,
-    curriculum: [
-        Course[]
-    ]
+    curriculum: Course[],
+
+    /** Number of semesters shown in grid */
+    semesters: number,
 }

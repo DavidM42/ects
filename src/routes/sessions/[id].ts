@@ -33,6 +33,8 @@ export async function put({ params, request }): Promise<EndpointOutput> {
         const res = await SessionSave.findByIdAndUpdate(params.id, {
             degrees: data.degrees,
 			lang: data.lang,
+            universityId: data.universityId,
+            semesters: data.semesters,
 			curriculum: data.curriculum,
             updatedAt: new Date()
         });

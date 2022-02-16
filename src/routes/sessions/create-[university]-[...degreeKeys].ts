@@ -42,79 +42,26 @@ export async function post({ params, request }): Promise<EndpointOutput> {
         // array of all degree names selected
         const degreeNames = [];
 
-        // TODO write unit test for this logic as it could corrupt the database 
         // combine all selected degrees
         for (const degreeId of degreeKeys) {
             try {
                 const json = await getDegreeDefault(university, degreeId);
                 degreeDefaultData.push(json);
                 degreeNames.push(json.degree);
-
-                /** Incrementing index for course IDs */
-                let idIncrement = 0;
-
-                console.warn('WTF');
-                for (let semesterIndex = 0; semesterIndex < json.curriculum.length; semesterIndex++) {
-                    const semester = json.curriculum[semesterIndex];
-
-                    for (let courseInSemesterIndex = 0; courseInSemesterIndex < semester.length; courseInSemesterIndex++) {
-                        if (!semester[courseInSemesterIndex]._id) {
-                            // generate incrementing id for every module in semester if not yet set by multisemester insertion (or manually in json)
-                            semester[courseInSemesterIndex]._id = idIncrement++;
-                        }
-
-                        /*
-                            logic for multi semester modules
-                            duplicating and marking
-                        */
-                        /*
-                        if (semester[courseInSemesterIndex].multisemester && semester[courseInSemesterIndex].multisemester > 1) {
-                            const lastMultiSemesterIndex = semester[courseInSemesterIndex].multisemester;
-                            semester[courseInSemesterIndex].lastMultiSemesterId = `${semester[courseInSemesterIndex]._id}-multi-${lastMultiSemesterIndex}`;
-
-                            if (lastMultiSemesterIndex > 9) {
-                                const error = `${degreeId} has a multisemester module with more than 9 semesters. Which is not supported as of now.`;
-                                console.error(error);
-                                return {
-                                    status: 400,
-                                    body: error
-                                };
-                            }
-
-                            for (let multiSemesterOffset = 1; multiSemesterOffset <= lastMultiSemesterIndex; multiSemesterOffset++) {
-                                // Copy and edit course into successing semester
-                                const copiedCourse = semester[courseInSemesterIndex];
-                                // remove multisemester marking from copied course to not recurse loop
-                                copiedCourse.multisemester = undefined;
-                                delete copiedCourse.multisemester;
-                                // set multi postfix in id with index
-                                // copiedCourse._id = semester[courseInSemesterIndex]._id + 0.1 * multiSemesterOffset;
-                                copiedCourse._id = semester[courseInSemesterIndex]._id + `-multi-${multiSemesterOffset}`;
-
-                                // Append copied course into either same index in target semester or append at target semester end
-                                if (json.curriculum[semesterIndex + multiSemesterOffset].length > courseInSemesterIndex) {
-                                    json.curriculum[semesterIndex + multiSemesterOffset].splice(courseInSemesterIndex, 0, copiedCourse);
-                                } else {
-                                    json.curriculum[semesterIndex + multiSemesterOffset].push(copiedCourse);
-                                }
-                            }
-
-                            // and also mark this first multisemester course as first multi but after copying it multiple times
-                            semester[courseInSemesterIndex]._id = semester[courseInSemesterIndex]._id + '-multi-0';
-                        }
-                        */
-                    }
-
-                    // add modules into combined curriculum of all selected degrees
-                    if (!combinedCurriculums[semesterIndex]) {
-                        combinedCurriculums.push([]);
-                    }
-                    combinedCurriculums[semesterIndex].push(...semester);
-                }
+                combinedCurriculums.push(...json.curriculum);
             } catch (e) {
                 console.error(e);
             }
         }
+
+	    // initially set max semester to max semester in combinedCurriculums + 1 (since length one more and not 0 indexed)
+        let maxSemester = 0;
+            combinedCurriculums.forEach((item) => {
+                const maxThisCourseSemester = Math.max(...item.semesters);
+                if (maxThisCourseSemester > maxSemester) {
+                    maxSemester = maxThisCourseSemester + 1;
+                }
+        });
 
         const res = await new SessionSave({
             universityId: university,
@@ -122,7 +69,8 @@ export async function post({ params, request }): Promise<EndpointOutput> {
             lang: degreeDefaultData[0].lang,
             curriculum: combinedCurriculums,
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            semesters: maxSemester
         }).save();
 
         if (res) {

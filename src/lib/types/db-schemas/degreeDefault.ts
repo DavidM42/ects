@@ -1,11 +1,11 @@
 import { Schema } from "mongoose";
 
-import { curriculumSchema } from "./curriculum";
+import { courseSchema } from "./course";
 
 export const degreeOptionSchema = new Schema({
     degree: String,
     lang: String,
     ects: Number,
 
-    curriculum: curriculumSchema
+    curriculum: [courseSchema]
 });

@@ -55,7 +55,7 @@
 
 	import { SessionRemembering } from '$lib/sessionRemembering';
 	import Footer from '$lib/components/Footer.svelte';
-import type { MultiSelectItem } from 'carbon-components-svelte/types/MultiSelect/MultiSelect.svelte';
+	import type { MultiSelectItem } from 'carbon-components-svelte/types/MultiSelect/MultiSelect.svelte';
 
 	export let universityOptions: Array<DropdownOption>;
 	let selectedUniversity: DropdownOption = universityOptions[0];
