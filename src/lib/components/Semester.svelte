@@ -11,7 +11,7 @@
 	import {dndzone, TRIGGERS, overrideItemIdKeyNameBeforeInitialisingDndZones} from 'svelte-dnd-action';
 	overrideItemIdKeyNameBeforeInitialisingDndZones('_id');
 
-	import type { Course, CourseTypes } from '$lib/types/interfaces/SaveData';
+	import type { Course, CourseTypes } from '$lib/types/interfaces/course';
 	import { beforeDragSemesters, dragAffectedSemesters, dragStartSemester } from '$lib/stores/dragStartStore';
 	import { curriculum } from '$lib/stores/curriculumStore';
 	import EditModal from './EditModal.svelte';

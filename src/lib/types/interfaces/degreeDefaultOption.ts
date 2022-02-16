@@ -1,4 +1,4 @@
-export interface DefaultDegreeOption {
+export interface DegreeDefaultOption {
     degree: string,
     lang: string,
     id: string,

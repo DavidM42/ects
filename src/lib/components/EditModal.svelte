@@ -10,7 +10,7 @@
 		TextInput
 	} from 'carbon-components-svelte';
 
-	import type { Course } from '$lib/types/interfaces/SaveData';
+	import type { Course } from '$lib/types/interfaces/course';
 
 	export let course: Course;
 

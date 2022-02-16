@@ -29,7 +29,8 @@
 
 	import Semester from '$lib/components/Semester.svelte';
 	import RelationLegend from '$lib/components/RelationLegend.svelte';
-	import type { Course, SaveData } from '$lib/types/interfaces/SaveData';
+	import type { Course } from '$lib/types/interfaces/course';
+	import type { SaveData } from '$lib/types/interfaces/SaveData';
 	import { SessionRemembering } from '$lib/sessionRemembering';
 	import Footer from '$lib/components/Footer.svelte';
 	import { curriculum } from '$lib/stores/curriculumStore';
@@ -172,7 +173,6 @@
 
 	/** Adds a new semester, saved and reload page. Reload needed because dnd zones can't be re initialized */
 	const addSemester = async () => {
-		// TODO FIX THIS WHY IT NO WORKY
 		saveData.semesters++;
 		changedSinceLastSaveTime = true;
 		await autoSave();

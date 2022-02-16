@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import dotenv from 'dotenv';
 
 import { sessionSaveSchema } from './types/db-schemas/sessionSave';
-import { universityOptionSchema } from "./types/interfaces/universityOption";
+import { universityOptionSchema } from "./types/db-schemas/universityOption";
 
 /**
  * Doing Database initialization at one central place here

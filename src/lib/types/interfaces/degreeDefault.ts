@@ -1,4 +1,4 @@
-import type { Course } from "./SaveData";
+import type { Course } from "./course";
 
 export interface DegreeDefault {
     degrees: string[],

@@ -70,7 +70,6 @@
 			const json = await (await fetch(`/degrees/${selectedUniversity.id}/options`)).json();
 			degreeOptions = json.map((option) => ({
 				id: option.id,
-				// TODO why is this not displayed in dropdown????
 				text: `${option.degree} (${option.lang}) - ${option.ects ? option.ects : '?'} ECTS`
 			}));
 			console.log(degreeOptions);
@@ -109,7 +108,6 @@
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			// body: JSON.stringify(newSaveData)
 			body: '{}'
 		})
 			.then(async (res) => {
@@ -181,8 +179,7 @@
 					<!-- could display university name but retrieve from linked id not worth it -->
 					<div class="info-row">
 						<span>Degree:</span>
-						<!-- TODO migrate and remove fallback -->
-						<span class="date">{session['degree'] || session.degrees?.join(' & ')}</span>
+						<span class="date">{session.degrees?.join(' & ')}</span>
 					</div>
 					<div class="info-row">
 						<span>Progress:</span>
