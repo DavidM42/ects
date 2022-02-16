@@ -1,7 +1,7 @@
 import type { EndpointOutput } from '@sveltejs/kit';
 
 import { SessionSave } from '$lib/db';
-import type { Degree } from '$lib/types/degree';
+import type { SaveData } from '$lib/types/interfaces/SaveData';
 
 export async function get({ params }): Promise<EndpointOutput> {
     try {
@@ -28,10 +28,10 @@ export async function get({ params }): Promise<EndpointOutput> {
 
 export async function put({ params, request }): Promise<EndpointOutput> {
     try {
-        const data: Degree = (await request.json()) as Degree;
+        const data: SaveData = (await request.json()) as SaveData;
 
         const res = await SessionSave.findByIdAndUpdate(params.id, {
-            degree: data.degree,
+            degrees: data.degrees,
 			lang: data.lang,
 			curriculum: data.curriculum,
             updatedAt: new Date()

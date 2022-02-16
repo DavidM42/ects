@@ -5,7 +5,7 @@
 		const res = await fetch(url);
 
 		if (res.ok) {
-			const json: Degree = await res.json();
+			const json: SaveData = await res.json();
 
 			return {
 				props: {
@@ -29,11 +29,11 @@
 
 	import Semester from '$lib/components/Semester.svelte';
 	import RelationLegend from '$lib/components/RelationLegend.svelte';
-	import type { Course, Degree } from '$lib/types/degree';
+	import type { Course, SaveData } from '$lib/types/interfaces/SaveData';
 	import { SessionRemembering } from '$lib/sessionRemembering';
 	import Footer from '$lib/components/Footer.svelte';
 
-	export let saveData: Degree;
+	export let saveData: SaveData;
 	// console.log(saveData);
 
 	let changedSinceLastSaveTime = false;
@@ -97,9 +97,6 @@
 		changedSinceLastSaveTime = true;
 		calcDegreeValues();
 
-		// TODO activate again when finishing and failing and so on is implemented for modules to calc progress
-		// calcDegreeEcts();
-
 		window.addEventListener('beforeunload', unsavedChangesCloseListener);
 	};
 
@@ -113,7 +110,7 @@
 			console.log('Saving');
 
 			// update session storage
-			SessionRemembering.addOrUpdate(saveData._id, saveData.degree, passedEcts, degreeEctsSum, meanGrade);
+			SessionRemembering.addOrUpdate(saveData._id, saveData.degrees, passedEcts, degreeEctsSum, meanGrade);
 
 			// then update database via backend
 			try {
@@ -196,7 +193,7 @@
 
 	onMount(async () => {
 		if (browser) {
-			SessionRemembering.addOrUpdate(saveData._id, saveData.degree, passedEcts, degreeEctsSum, meanGrade);
+			SessionRemembering.addOrUpdate(saveData._id, saveData.degrees, passedEcts, degreeEctsSum, meanGrade);
 
 			// disable please rotate on dev server because hmr messes it up
 			if (!dev) {
@@ -217,12 +214,12 @@
 </script>
 
 <svelte:head>
-	<title>ects.wuel.de - {saveData.degree} - session {saveData._id}</title>
-	<meta name="description" content="Planning of your degree {saveData.degree}">
+	<title>ects.wuel.de - {saveData.degrees} - session {saveData._id}</title>
+	<meta name="description" content="Planning of your degree {saveData.degrees}">
 </svelte:head>
 
 <h1>{import.meta.env.VITE_APP_DOMAIN}</h1>
-<h2>{saveData.degree}</h2>
+<h2>{saveData.degrees.join(' & ')}</h2>
 <div id="stats-container">
 	<div class="ects">
 		<ProgressBar
@@ -274,6 +271,7 @@
 
 	<hr class="plan-seperator">
 
+	<!-- TODO also legend for shortcuts with v,s,t,ue,p,th -->
 	<RelationLegend {saveData} />
 
 	{#if saveData?.curriculum}

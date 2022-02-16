@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, tick } from 'svelte';
 	import { flip } from 'svelte/animate';
 
 	import Reset16 from 'carbon-icons-svelte/lib/Reset16';
@@ -8,19 +8,19 @@
 
 	import { Tooltip } from 'carbon-components-svelte';
 
-	import { dndzone } from 'svelte-dnd-action';
-
 	// thx https://github.com/isaacHagoel/svelte-dnd-action#overriding-the-item-id-key-name
 	// needed because of mongoDB auto id using _id not id for modules
-	import { overrideItemIdKeyNameBeforeInitialisingDndZones } from 'svelte-dnd-action';
+	import {dndzone, TRIGGERS, SOURCES, DRAGGED_ELEMENT_ID, overrideItemIdKeyNameBeforeInitialisingDndZones} from 'svelte-dnd-action';
 	overrideItemIdKeyNameBeforeInitialisingDndZones('_id');
 
-	import type { Course } from '$lib/types/degree';
+	import type { Course, CourseTypes } from '$lib/types/interfaces/SaveData';
 	import EditModal from './EditModal.svelte';
 	const flipDurationMs = 200;
 
 	export let semesterIndex: number;
 	export let items = [];
+
+	console.log(items);
 
 	/******* ECTS and grade calculation for semester ********/
 	/** Combined ects of all courses you passed in this semester*/
@@ -57,12 +57,19 @@
 	};
 	calcSemesterValues();
 
-	/**** Resorting stuff handler for dnd lib *****/
-	function handleSort(e) {
+	/** Changes in DnD but not dropped final into place so re calc but not dispatch update event**/
+	function handleConsider(e) {
+		items = e.detail.items;
+		calcSemesterValues();
+	}
+
+	/** Element is dropped into place, only then dispatch updated event*/
+	function handleFinalize(e) {
 		items = e.detail.items;
 		calcSemesterValues();
 		dispatch('updated', items);
 	}
+
 
 
 	/********* Editing courses stuff *********/
@@ -96,6 +103,27 @@
 		dispatch('updated', items);
 	}
 
+
+	/**
+	 * Translate the course type object into a user displayable string
+	*/
+	const courseTypesObjToString = (courseTypesObj: CourseTypes) => {
+		// TODO i18n in here
+		let courseTypesString = '';
+		for (const key in courseTypesObj) {
+			if (courseTypesObj[key] === true || courseTypesObj[key] === 1) {
+				courseTypesString += key + ', ';
+			} else if (courseTypesObj[key] >= 1) {
+				courseTypesString += `${courseTypesObj[key]}*${key}, `;
+			}
+		}
+
+		// hard code replace UE for übung wie Ü
+		courseTypesString = courseTypesString.replace(/UE/g, 'Ü');
+
+		return courseTypesString.slice(0, -2);
+	};
+
 	const dispatch = createEventDispatcher();
 </script>
 
@@ -122,12 +150,11 @@
 			<div class="semester-remove" on:click={() => dispatch('semesterDelete')}><Delete20 /></div>
 		{/if}
 	</div>
-	<!-- TODO make clickable to mark as done, failed, todo and so on -->
 	<div
 		class="module-container"
 		use:dndzone={{ items, flipDurationMs }}
-		on:consider={handleSort}
-		on:finalize={handleSort}
+		on:consider={handleConsider}
+		on:finalize={handleFinalize}
 	>
 		<!-- TODO abstract module into a seperate component with update function -->
 		<!-- TODO and then rename it all course  -->
@@ -136,10 +163,14 @@
 				class="module"
 				on:dblclick={() => startCourseEdit(item)}
 				animate:flip={{ duration: flipDurationMs }}
-				style="--relation-color: {item.relation?.color || '#ececec'};"
+				style="--relation-color: {item.relation?.color || '#ececec'}; --calculated-width: calc(60% / 30 * {item.ects || 5});"
 				class:feedback--passed={item.state?.result?.passed || (item.state?.result?.grade <= 4.0 && item.state?.result?.grade > 0.0)}
 				class:feedback--failed={item.state?.result?.passed === false || item.state?.result?.grade > 4.0}
 				class:feedback--forecast={item.state?.result?.forecast}
+				
+				class:multisemester--first={item._id?.endsWith('multi-0')}
+				class:multisemester--middle={item._id?.includes('multi') && !item._id?.endsWith('multi-0') && !item._id?.endsWith(`multi-${item.lastMultiSemesterId}`)}
+				class:multisemester--last={item._id?.endsWith(`multi-${item.lastMultiSemesterId}`)}
 			>
 				<div class="shortname">{item.shortname}</div>
 
@@ -157,8 +188,8 @@
 					{/if}
 				</div>
 
-				{#if item.types && item.types.length > 0}
-					<div class="types">{`(${item.types.join(',')})`}</div>
+				{#if item.types}
+					<div class="types">{`(${courseTypesObjToString(item.types)})`}</div>
 				{/if}
 
 				<!-- on first element in first semester include tooltip how to double tap and use -->
@@ -197,7 +228,8 @@
 				width: 95vw;
 
 				.module {
-					width: 10vw;
+					min-width: 7.5vw;
+					width: var(--calculated-width, 10vw);
 				}
 			}
 		}
@@ -225,7 +257,9 @@
 				height: 175px;
 
 				.module {
-					width: 20vw;
+					// width: 20vw;
+					min-width: 10vw;
+					width: var(--calculated-width, 10vw);
 				}
 			}
 		}
@@ -285,7 +319,7 @@
 			// inverted theme from rest to contrast
 			background-color: var(--lt-color-background-default, #fff);
 
-			margin: 5px;
+			margin: 5px 2px;
 			border: 5px solid var(--relation-color, --fallback-color);
 			border-radius: 5px 0px;
 
@@ -305,6 +339,21 @@
 
 				&--forecast {
 					background-color: rgba(208, 116, 245, 0.6);
+				}
+			}
+
+			&.multisemester {
+				&--first {
+					border-bottom: none;
+				}
+
+				&--middle {
+					border-top: none;
+					border-bottom: none;
+				}
+
+				&--last {
+					border-top: none;
 				}
 			}
 
